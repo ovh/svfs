@@ -1,6 +1,6 @@
 # The Swift Virtual File System
 
-`svfs` is a Virtual File System for Openstack Swift built upon fuse.
+*SVFS* is a Virtual File System for Openstack Swift built upon fuse.
 
 ### Disclaimer
 This is not an official project of the Openstack community.
