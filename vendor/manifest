@@ -1,0 +1,37 @@
+{
+	"version": 0,
+	"dependencies": [
+		{
+			"importpath": "bazil.org/fuse",
+			"repository": "https://github.com/bazil/fuse",
+			"revision": "1bab7acc918a3316e302d2ef44e225374e840aa1",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/bazil/fuse",
+			"repository": "https://github.com/bazil/fuse",
+			"revision": "1bab7acc918a3316e302d2ef44e225374e840aa1",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/ncw/swift",
+			"repository": "https://github.com/ncw/swift",
+			"revision": "77b213b0cd16b6f2f2146b7cc54a1aa8a5613b01",
+			"branch": "master"
+		},
+		{
+			"importpath": "golang.org/x/net/context",
+			"repository": "https://go.googlesource.com/net",
+			"revision": "8968c61983e8f51a91b8c0ef25bf739278c89634",
+			"branch": "master",
+			"path": "/context"
+		},
+		{
+			"importpath": "golang.org/x/sys/unix",
+			"repository": "https://go.googlesource.com/sys",
+			"revision": "50c6bc5e4292a1d4e65c6e9be5f53be28bcbe28e",
+			"branch": "master",
+			"path": "/unix"
+		}
+	]
+}
