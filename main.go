@@ -16,11 +16,12 @@ import (
 
 func main() {
 	sc := swift.Connection{}
+	log.SetOutput(os.Stderr)
 
 	// FS options
 	flag.StringVar(&sc.UserName, "u", "", "User name")
 	flag.StringVar(&sc.ApiKey, "p", "", "User password")
-	flag.StringVar(&sc.AuthUrl, "a", "https://auth.cloud.ovh.net", "Authentication URL")
+	flag.StringVar(&sc.AuthUrl, "a", "https://auth.cloud.ovh.net/v2.0", "Authentication URL")
 	flag.StringVar(&sc.Region, "r", "", "Region")
 	flag.StringVar(&sc.Tenant, "t", "", "Tenant name")
 	flag.Usage = func() {
@@ -34,7 +35,7 @@ func main() {
 		flag.Usage()
 		os.Exit(2)
 	}
-	mountpoint := os.Args[1]
+	mountpoint := os.Args[len(os.Args)-1]
 
 	// Mount SVFS
 	c, err := fuse.Mount(
@@ -52,9 +53,15 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Init SVFS
+	svfs := &fs.SVFS{}
+	if err = svfs.Init(&sc); err != nil {
+		log.Fatal(err)
+	}
+
 	// Serve SVFS
 	srv := fusefs.New(c, nil)
-	if err = srv.Serve(&fs.SVFS{Con: &sc}); err != nil {
+	if err = srv.Serve(svfs); err != nil {
 		log.Fatal(err)
 	}
 
