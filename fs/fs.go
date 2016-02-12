@@ -16,7 +16,7 @@ func (s *SVFS) Init(sc *swift.Connection) error {
 }
 
 func (s *SVFS) Root() (fs.Node, error) {
-	return &Directory{s: s.s}, nil
+	return &Dir{s: s.s}, nil
 }
 
 // Check that we satisfy the fs interface.
