@@ -9,6 +9,7 @@ import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"github.com/ncw/swift"
+	"github.com/xlucas/svfs/fs/file"
 	"golang.org/x/net/context"
 )
 
@@ -18,12 +19,24 @@ var (
 	FolderRegex  = regexp.MustCompile("^.+/$")
 )
 
-type Directory struct {
+type Dir struct {
 	s *swift.Connection
-	f *File
+	f file.Node
 }
 
-func (d *Directory) readRoot() ([]fuse.Dirent, error) {
+func (d *Dir) container() (*file.Container, error) {
+	dir, ok := d.f.(*file.Directory)
+	if ok {
+		return dir.Container, nil
+	}
+	cont, ok := d.f.(*file.Container)
+	if ok {
+		return cont, nil
+	}
+	return nil, fmt.Errorf("Unable to find relevant swift container")
+}
+
+func (d *Dir) readRoot() ([]fuse.Dirent, error) {
 	// Retrieve all the containers for this account
 	containers, err := d.s.ContainersAll(nil)
 	if err != nil {
@@ -31,6 +44,7 @@ func (d *Directory) readRoot() ([]fuse.Dirent, error) {
 	}
 
 	// Convert swift containers to fuse directories
+	// but hide segment containers
 	var dirs []fuse.Dirent
 	for _, container := range containers {
 		if !SegmentRegex.Match([]byte(container.Name)) {
@@ -43,13 +57,21 @@ func (d *Directory) readRoot() ([]fuse.Dirent, error) {
 	return dirs, nil
 }
 
-func (d *Directory) readDirectory() ([]fuse.Dirent, error) {
-	// Retrieve all directories in our path
-	prefix := d.f.path
+func (d *Dir) read() ([]fuse.Dirent, error) {
+	// Build filter prefix
+	prefix := d.f.Path()
 	if prefix != "" {
-		prefix = fmt.Sprintf("%s/", d.f.path)
+		prefix = fmt.Sprintf("%s/", d.f.Path())
 	}
-	objects, err := d.s.ObjectsAll(d.f.c.Name, &swift.ObjectsOpts{
+
+	// Find relevant container
+	c, err := d.container()
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch objects
+	objects, err := d.s.ObjectsAll(c.C.Name, &swift.ObjectsOpts{
 		Delimiter: '/',
 		Prefix:    prefix,
 	})
@@ -70,7 +92,7 @@ func (d *Directory) readDirectory() ([]fuse.Dirent, error) {
 			fileType = fuse.DT_Dir
 		}
 
-		fmt.Fprintf(os.Stderr, "Got : %s\n", fileName)
+		//fmt.Fprintf(os.Stderr, "Got : %s\n", fileName)
 		dirs = append(dirs, fuse.Dirent{
 			Name: fileName,
 			Type: fileType,
@@ -80,71 +102,72 @@ func (d *Directory) readDirectory() ([]fuse.Dirent, error) {
 	return dirs, nil
 }
 
-func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
+func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) error {
 	if d.f != nil {
 		a.Size = d.f.Size()
-		if d.f.directory {
-			a.Mode = os.ModeDir
-		}
-	}
-	if d.f == nil {
+		a.Mode = d.f.Mode()
+	} else {
 		a.Mode = os.ModeDir
 	}
 	return nil
 }
 
-func (d *Directory) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
-	// Root directory
+func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	if d.f == nil {
-		fmt.Fprintf(os.Stderr, "Readdir request for root\n")
 		return d.readRoot()
 	}
-	// Inside a container
-	fmt.Fprintf(os.Stderr, "Readdir request for %s\n", d.f.Name())
-	return d.readDirectory()
+	return d.read()
 }
 
-func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
+func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
 	var (
-		file *File
+		fn   file.Node
 		path = ""
 	)
 
 	if d.f != nil {
-		if d.f.path == "" {
+		if d.f.Path() == "" {
 			path = req.Name
 		} else {
-			path = fmt.Sprintf("%s/%s", d.f.path, req.Name)
+			path = fmt.Sprintf("%s/%s", d.f.Path(), req.Name)
 		}
 	}
 
-	// Container root
+	// Root lookup
 	if d.f == nil {
-		fmt.Fprintf(os.Stderr, "Lookup request for root %s with path %s\n", req.Name, path)
-		container, headers, err := d.s.Container(req.Name)
+		// Main container
+		container, _, err := d.s.Container(req.Name)
 		if err != nil {
 			return nil, err
 		}
-		seg, segH, err := d.s.Container(req.Name + "_segments")
-		if err != nil {
-			file = NewFromContainer(path, container, headers)
-		} else {
-			file = NewFromContainerWithSegments(path, container, seg, headers, segH)
+
+		// Segment container
+		seg, _, err := d.s.Container(req.Name + "_segments")
+
+		// Build fuse entry
+		if err == swift.ContainerNotFound {
+			fn = &file.Container{File: file.NewFile(""), C: &container}
+		} else if err == nil {
+			fn = &file.Container{File: file.NewFile(""), C: &container, CS: &seg}
 		}
-		return &Directory{s: d.s, f: file}, nil
+		return &Dir{s: d.s, f: fn}, nil
 	}
 
-	// Inside a regular container
-	fmt.Fprintf(os.Stderr, "Lookup request for directory %s with path %s\n", req.Name, path)
-	obj, headers, err := d.s.Object(d.f.c.Name, path)
+	// Container or directory lookup
+	c, err := d.container()
 	if err != nil {
-		file = NewFromObjectWithSegments(path, true, &obj, headers, d.f)
-	} else {
-		file = NewFromObjectWithSegments(path, false, &obj, headers, d.f)
+		return nil, err
 	}
 
-	return &Directory{s: d.s, f: file}, nil
+	obj, _, err := d.s.Object(c.C.Name, path)
+	if err == swift.ObjectNotFound {
+		fn = &file.Directory{File: file.NewFile(path), Container: c, Label: req.Name}
+	} else if err == nil {
+		fn = &file.Object{File: file.NewFile(path), Container: c, SO: &obj}
+	}
+
+	return &Dir{s: d.s, f: fn}, nil
 }
 
-// Check that we satisify the Dir interface.
-var _ fs.Node = (*Directory)(nil)
+// Check that we satisify the Node interface.
+var _ fs.Node = (*Dir)(nil)
