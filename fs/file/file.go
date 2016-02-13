@@ -19,7 +19,6 @@ type Node interface {
 	Mode() os.FileMode
 	Name() string
 	Path() string
-	Attr(context.Context, *fuse.Attr) error
 	FuseEntry() fuse.Dirent
 }
 
