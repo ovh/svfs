@@ -19,6 +19,7 @@ type Node interface {
 	Mode() os.FileMode
 	Name() string
 	Path() string
+	Attr(context.Context, *fuse.Attr) error
 	FuseEntry() fuse.Dirent
 }
 
@@ -44,8 +45,9 @@ func (f *File) Path() string {
 	return f.path
 }
 
-func (*File) Attr(ctx context.Context, a *fuse.Attr) error {
+func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Atime = time.Now()
+	a.Mode = f.Mode()
 	return nil
 }
 

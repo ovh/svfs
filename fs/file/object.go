@@ -30,11 +30,12 @@ func (f *Object) Mode() os.FileMode {
 }
 
 func (f *Object) Attr(ctx context.Context, a *fuse.Attr) error {
+	f.File.Attr(ctx, a)
 	a.Size = f.Size()
 	a.Mtime = f.SO.LastModified
 	a.Ctime = f.SO.LastModified
 	a.Crtime = f.SO.LastModified
-	return f.File.Attr(ctx, a)
+	return nil
 }
 
 func (f *Object) FuseEntry() fuse.Dirent {
