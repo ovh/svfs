@@ -35,6 +35,13 @@ func (f *Container) Attr(ctx context.Context, a *fuse.Attr) error {
 	return f.File.Attr(ctx, a)
 }
 
+func (f *Container) FuseEntry() fuse.Dirent {
+	return fuse.Dirent{
+		Name: f.Name(),
+		Type: fuse.DT_Dir,
+	}
+}
+
 var (
 	_ fs.Node = (*Container)(nil)
 	_ Node    = (*Container)(nil)
