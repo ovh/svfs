@@ -94,7 +94,8 @@ func (d *Dir) read() (dirs []fuse.Dirent, err error) {
 
 func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) error {
 	if d.f != nil {
-		return d.f.Attr(ctx, a)
+		node, _ := d.f.(fs.Node)
+		return node.Attr(ctx, a)
 	} else {
 		a.Mode = os.ModeDir
 	}
