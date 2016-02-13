@@ -64,23 +64,24 @@ func (d *Dir) read() (dirs []fuse.Dirent, err error) {
 	for _, object := range objects {
 		var (
 			child    file.Node
-			fileName = strings.TrimPrefix(object.Name, d.f.Path())
+			o        = object
+			fileName = strings.TrimPrefix(o.Name, d.f.Path())
 		)
 		// This is a directory
-		if FolderRegex.Match([]byte(object.Name)) {
+		if FolderRegex.Match([]byte(o.Name)) {
 			child = &file.Directory{
-				File:      file.NewFile(object.Name),
+				File:      file.NewFile(o.Name),
 				Label:     fileName[:len(fileName)-1],
 				Container: container,
 			}
 		}
 		// This is a swift object
-		if !FolderRegex.Match([]byte(object.Name)) {
+		if !FolderRegex.Match([]byte(o.Name)) {
 			child = &file.Object{
-				File:      file.NewFile(object.Name),
+				File:      file.NewFile(o.Name),
 				Label:     fileName,
 				Container: container,
-				SO:        &object,
+				SO:        &o,
 			}
 		}
 
@@ -93,8 +94,7 @@ func (d *Dir) read() (dirs []fuse.Dirent, err error) {
 
 func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) error {
 	if d.f != nil {
-		a.Size = d.f.Size()
-		a.Mode = d.f.Mode()
+		return d.f.Attr(ctx, a)
 	} else {
 		a.Mode = os.ModeDir
 	}
@@ -112,22 +112,11 @@ func (d *Dir) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error)
 }
 
 func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
-	// Root lookup
-	if d.f == nil {
-		for _, container := range d.children {
-			if container.Name() == req.Name {
-				return &Dir{s: d.s, f: container}, nil
-			}
+	for _, container := range d.children {
+		if container.Name() == req.Name {
+			return &Dir{s: d.s, f: container}, nil
 		}
 	}
-
-	// Container or directory lookup
-	for _, ch := range d.children {
-		if ch.Name() == req.Name {
-			return &Dir{s: d.s, f: ch}, nil
-		}
-	}
-
 	return nil, fuse.ENOENT
 }
 

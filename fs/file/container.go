@@ -31,8 +31,10 @@ func (f *Container) Mode() os.FileMode {
 }
 
 func (f *Container) Attr(ctx context.Context, a *fuse.Attr) error {
+	f.File.Attr(ctx, a)
+	a.Mode = f.Mode()
 	a.Size = f.Size()
-	return f.File.Attr(ctx, a)
+	return nil
 }
 
 func (f *Container) FuseEntry() fuse.Dirent {
