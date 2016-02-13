@@ -13,11 +13,12 @@ type Object struct {
 	*File
 	*Container
 	Segmented bool
+	Label     string
 	SO        *swift.Object
 }
 
 func (f *Object) Name() string {
-	return f.SO.Name
+	return f.Label
 }
 
 func (f *Object) Size() uint64 {
@@ -34,6 +35,13 @@ func (f *Object) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Ctime = f.SO.LastModified
 	a.Crtime = f.SO.LastModified
 	return f.File.Attr(ctx, a)
+}
+
+func (f *Object) FuseEntry() fuse.Dirent {
+	return fuse.Dirent{
+		Name: f.Name(),
+		Type: fuse.DT_File,
+	}
 }
 
 var (

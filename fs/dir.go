@@ -14,14 +14,14 @@ import (
 )
 
 var (
-	SegmentRegex = regexp.MustCompile("^.+_segments$")
-	RootRegex    = regexp.MustCompile("^[^/]+/?$")
-	FolderRegex  = regexp.MustCompile("^.+/$")
+	RootRegex   = regexp.MustCompile("^[^/]+/?$")
+	FolderRegex = regexp.MustCompile("^.+/$")
 )
 
 type Dir struct {
-	s *swift.Connection
-	f file.Node
+	s        *swift.Connection
+	f        file.Node
+	children []file.Node
 }
 
 func (d *Dir) container() (*file.Container, error) {
@@ -36,69 +36,58 @@ func (d *Dir) container() (*file.Container, error) {
 	return nil, fmt.Errorf("Unable to find relevant swift container")
 }
 
-func (d *Dir) readRoot() ([]fuse.Dirent, error) {
-	// Retrieve all the containers for this account
-	containers, err := d.s.ContainersAll(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert swift containers to fuse directories
-	// but hide segment containers
-	var dirs []fuse.Dirent
-	for _, container := range containers {
-		if !SegmentRegex.Match([]byte(container.Name)) {
-			dirs = append(dirs, fuse.Dirent{
-				Name: container.Name,
-				Type: fuse.DT_Dir,
-			})
+func (d *Dir) read() (dirs []fuse.Dirent, err error) {
+	// Cache hit
+	if len(d.children) > 0 {
+		for _, child := range d.children {
+			dirs = append(dirs, child.FuseEntry())
 		}
-	}
-	return dirs, nil
-}
-
-func (d *Dir) read() ([]fuse.Dirent, error) {
-	// Build filter prefix
-	prefix := d.f.Path()
-	if prefix != "" {
-		prefix = fmt.Sprintf("%s/", d.f.Path())
+		return dirs, nil
 	}
 
-	// Find relevant container
-	c, err := d.container()
+	// Get underlying container
+	container, err := d.container()
 	if err != nil {
 		return nil, err
 	}
 
 	// Fetch objects
-	objects, err := d.s.ObjectsAll(c.C.Name, &swift.ObjectsOpts{
+	objects, err := d.s.ObjectsAll(container.C.Name, &swift.ObjectsOpts{
 		Delimiter: '/',
-		Prefix:    prefix,
+		Prefix:    d.f.Path(),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert them to fuse directories
-	var dirs []fuse.Dirent
+	// Fill cache
 	for _, object := range objects {
-		// Simple file
-		fileName := strings.TrimPrefix(object.Name, prefix)
-		fileType := fuse.DT_File
-
-		// Directory
-		if FolderRegex.Match([]byte(fileName)) {
-			fileName = fileName[:len(fileName)-1]
-			fileType = fuse.DT_Dir
+		var (
+			child    file.Node
+			fileName = strings.TrimPrefix(object.Name, d.f.Path())
+		)
+		// This is a directory
+		if FolderRegex.Match([]byte(object.Name)) {
+			child = &file.Directory{
+				File:      file.NewFile(object.Name),
+				Label:     fileName[:len(fileName)-1],
+				Container: container,
+			}
+		}
+		// This is a swift object
+		if !FolderRegex.Match([]byte(object.Name)) {
+			child = &file.Object{
+				File:      file.NewFile(object.Name),
+				Label:     fileName,
+				Container: container,
+				SO:        &object,
+			}
 		}
 
-		//fmt.Fprintf(os.Stderr, "Got : %s\n", fileName)
-		dirs = append(dirs, fuse.Dirent{
-			Name: fileName,
-			Type: fileType,
-		})
-
+		d.children = append(d.children, child)
+		dirs = append(dirs, child.FuseEntry())
 	}
+
 	return dirs, nil
 }
 
@@ -112,62 +101,34 @@ func (d *Dir) Attr(ctx context.Context, a *fuse.Attr) error {
 	return nil
 }
 
-func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
+func (d *Dir) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error) {
 	if d.f == nil {
-		return d.readRoot()
+		for _, c := range d.children {
+			entries = append(entries, c.FuseEntry())
+		}
+		return entries, nil
 	}
 	return d.read()
 }
 
 func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
-	var (
-		fn   file.Node
-		path = ""
-	)
-
-	if d.f != nil {
-		if d.f.Path() == "" {
-			path = req.Name
-		} else {
-			path = fmt.Sprintf("%s/%s", d.f.Path(), req.Name)
-		}
-	}
-
 	// Root lookup
 	if d.f == nil {
-		// Main container
-		container, _, err := d.s.Container(req.Name)
-		if err != nil {
-			return nil, err
+		for _, container := range d.children {
+			if container.Name() == req.Name {
+				return &Dir{s: d.s, f: container}, nil
+			}
 		}
-
-		// Segment container
-		seg, _, err := d.s.Container(req.Name + "_segments")
-
-		// Build fuse entry
-		if err == swift.ContainerNotFound {
-			fn = &file.Container{File: file.NewFile(""), C: &container}
-		} else if err == nil {
-			fn = &file.Container{File: file.NewFile(""), C: &container, CS: &seg}
-		}
-		return &Dir{s: d.s, f: fn}, nil
 	}
 
 	// Container or directory lookup
-	c, err := d.container()
-	if err != nil {
-		return nil, err
+	for _, ch := range d.children {
+		if ch.Name() == req.Name {
+			return &Dir{s: d.s, f: ch}, nil
+		}
 	}
 
-	obj, _, err := d.s.Object(c.C.Name, path)
-	if err == swift.ObjectNotFound {
-		fn = &file.Directory{File: file.NewFile(path), Container: c, Label: req.Name}
-	} else if err == nil {
-		fn = &file.Object{File: file.NewFile(path), Container: c, SO: &obj}
-	}
-
-	return &Dir{s: d.s, f: fn}, nil
+	return nil, fuse.ENOENT
 }
 
-// Check that we satisify the Node interface.
 var _ fs.Node = (*Dir)(nil)

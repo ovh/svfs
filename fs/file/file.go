@@ -19,6 +19,7 @@ type Node interface {
 	Mode() os.FileMode
 	Name() string
 	Path() string
+	FuseEntry() fuse.Dirent
 }
 
 func NewFile(path string) *File {
@@ -46,6 +47,13 @@ func (f *File) Path() string {
 func (*File) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Atime = time.Now()
 	return nil
+}
+
+func (f *File) FuseEntry() fuse.Dirent {
+	return fuse.Dirent{
+		Name: f.Name(),
+		Type: fuse.DT_File,
+	}
 }
 
 var (

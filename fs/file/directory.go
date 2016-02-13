@@ -32,6 +32,13 @@ func (f *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
 	return f.File.Attr(ctx, a)
 }
 
+func (f *Directory) FuseEntry() fuse.Dirent {
+	return fuse.Dirent{
+		Name: f.Name(),
+		Type: fuse.DT_Dir,
+	}
+}
+
 var (
 	_ fs.Node = (*Directory)(nil)
 	_ Node    = (*Directory)(nil)
