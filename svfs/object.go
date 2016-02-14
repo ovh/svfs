@@ -32,6 +32,35 @@ func (o *Object) Export() fuse.Dirent {
 	}
 }
 
+func (o *Object) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+	oh := ObjectHandle{}
+
+	// Not supported
+	if req.Flags.IsReadWrite() {
+		return nil, fuse.ENOTSUP
+	}
+
+	// RO
+	if req.Flags.IsReadOnly() {
+		r, _, err := o.s.ObjectOpen(o.c.Name, o.so.Name, false, nil)
+		if err != nil {
+			return nil, fuse.EIO
+		}
+		oh.r = r
+	}
+
+	// WO
+	if req.Flags.IsWriteOnly() {
+		w, err := o.s.ObjectCreate(o.c.Name, o.so.Name, false, "", "application/octet-sream", nil)
+		if err != nil {
+			return nil, fuse.EIO
+		}
+		oh.w = w
+	}
+
+	return &oh, nil
+}
+
 func (o *Object) Name() string {
 	return o.name
 }
@@ -41,6 +70,7 @@ func (o *Object) size() uint64 {
 }
 
 var (
-	_ Node    = (*Object)(nil)
-	_ fs.Node = (*Object)(nil)
+	_ Node          = (*Object)(nil)
+	_ fs.Node       = (*Object)(nil)
+	_ fs.NodeOpener = (*Object)(nil)
 )
