@@ -118,6 +118,7 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 				s:    d.s,
 				c:    d.c,
 				so:   &o,
+				p:    d,
 			}
 		}
 
@@ -162,9 +163,31 @@ func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 	return nil
 }
 
+func (d *Directory) Rename(ctx context.Context, req *fuse.RenameRequest, newDir fs.Node) error {
+	// Not supported
+	if _, ok := newDir.(*Root); ok {
+		return fuse.ENOTSUP
+	}
+	// Swift move = copy + delete
+	if t, ok := newDir.(*Container); ok {
+		d.s.ObjectMove(d.c.Name, d.path+req.OldName, t.c.Name, t.path+req.NewName)
+		t.children = []Node{}
+		d.children = []Node{}
+		return nil
+	}
+	if t, ok := newDir.(*Directory); ok {
+		d.s.ObjectMove(d.c.Name, d.path+req.OldName, t.c.Name, t.path+req.NewName)
+		t.children = []Node{}
+		d.children = []Node{}
+		return nil
+	}
+	return nil
+}
+
 var (
 	_ Node           = (*Directory)(nil)
 	_ fs.Node        = (*Directory)(nil)
 	_ fs.NodeCreater = (*Directory)(nil)
 	_ fs.NodeRemover = (*Directory)(nil)
+	_ fs.NodeRenamer = (*Directory)(nil)
 )

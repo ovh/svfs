@@ -28,6 +28,10 @@ func (r *Root) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 	return fuse.ENOTSUP
 }
 
+func (r *Root) Rename(ctx context.Context, req *fuse.RenameRequest, newDir fs.Node) error {
+	return fuse.ENOTSUP
+}
+
 func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error) {
 	var (
 		baseC = make(map[string]swift.Container)
@@ -85,4 +89,5 @@ var (
 	_ fs.Node        = (*Root)(nil)
 	_ fs.NodeCreater = (*Root)(nil)
 	_ fs.NodeRemover = (*Root)(nil)
+	_ fs.NodeRenamer = (*Root)(nil)
 )
