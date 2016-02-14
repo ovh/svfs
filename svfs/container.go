@@ -25,5 +25,7 @@ func (c *Container) size() uint64 {
 	return uint64(c.c.Bytes)
 }
 
-var _ Node = (*Directory)(nil)
-var _ fs.Node = (*Directory)(nil)
+var (
+	_ Node    = (*Container)(nil)
+	_ fs.Node = (*Container)(nil)
+)

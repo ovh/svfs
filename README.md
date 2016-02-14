@@ -9,14 +9,14 @@ This is not an official project of the Openstack community.
 `svfs -a https://auth.cloud.ovh.net/v2.0 -u user -p password -r region -t tenant /path/to/mountpoint`
 
 ### Project status
-This is the start of this project, and thus it's incomplete. Check the limitations section for these specific details.
+This is the start of this project, and thus it's obviously missing pieces. Take a look at the limitations section for details.
 
 ### Limitations
-As the development goes, features are added one after another.
-For the moment the following limitations will occur :
-* SVFS is Read-Only.
-* SVFS structure and node attributes are cached as you access them.
-* SVFS cache is dumb and has no eviction process, thus requiring a remount to trigger a filesystem refresh.
+As the development goes, features are added one after another. For the moment the following limitations will occur :
+* SVFS is using a dumb cache management thus distributed access is not supported.
+* SVFS structure and node attributes are cached as you access them and eviction only occurs on write or remove operations.
+* SVFS node size is not refreshed after a write operation.
+* SVFS container creation and removal is not supported.
 
 ### License
 This work is under the Apache license, see the [LICENSE](LICENSE) file for details.

@@ -30,6 +30,45 @@ func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
 	return nil
 }
 
+func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
+	// Create an empty object in swift
+	path := d.path + req.Name
+	w, err := d.s.ObjectCreate(d.c.Name, path, false, "", "application/octet-stream", nil)
+	if err != nil {
+		return nil, nil, fuse.EIO
+	}
+	if _, err := w.Write([]byte(nil)); err != nil {
+		return nil, nil, fuse.EIO
+	}
+	w.Close()
+
+	// Retrieve it
+	obj, _, err := d.s.Object(d.c.Name, path)
+	if err != nil {
+		return nil, nil, fuse.EIO
+	}
+
+	// New node
+	node := &Object{
+		name: req.Name,
+		path: path,
+		s:    d.s,
+		so:   &obj,
+		c:    d.c,
+	}
+
+	// Get object handler handler
+	h, err := node.open(fuse.OpenWriteOnly)
+	if err != nil {
+		return nil, nil, fuse.EIO
+	}
+
+	// Force cache eviction
+	d.children = []Node{}
+
+	return node, h, nil
+}
+
 func (d *Directory) Export() fuse.Dirent {
 	return fuse.Dirent{
 		Name: d.name,
@@ -98,7 +137,6 @@ func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *f
 			if n, ok := item.(*Directory); ok {
 				return n, nil
 			}
-
 			if n, ok := item.(*Object); ok {
 				return n, nil
 			}
@@ -111,5 +149,22 @@ func (d *Directory) Name() string {
 	return d.name
 }
 
-var _ Node = (*Directory)(nil)
-var _ fs.Node = (*Directory)(nil)
+func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
+	// Delete from swift
+	err := d.s.ObjectDelete(d.c.Name, d.path+req.Name)
+	if err != nil {
+		return err
+	}
+
+	// Cache eviction
+	d.children = []Node{}
+
+	return nil
+}
+
+var (
+	_ Node           = (*Directory)(nil)
+	_ fs.Node        = (*Directory)(nil)
+	_ fs.NodeCreater = (*Directory)(nil)
+	_ fs.NodeRemover = (*Directory)(nil)
+)

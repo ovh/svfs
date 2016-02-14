@@ -1,6 +1,7 @@
 package svfs
 
 import (
+	"io"
 	"io/ioutil"
 
 	"bazil.org/fuse"
@@ -17,12 +18,16 @@ type ObjectHandle struct {
 func (fh *ObjectHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
 	buf := make([]byte, req.Size)
 	n, err := fh.r.Read(buf)
+	if err != io.EOF {
+		return fuse.EIO
+	}
 	resp.Data = buf[:n]
-	return err
+	return nil
 }
 
 func (fh *ObjectHandle) ReadAll(ctx context.Context) ([]byte, error) {
-	return ioutil.ReadAll(fh.r)
+	data, err := ioutil.ReadAll(fh.r)
+	return data, err
 }
 
 func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) error {
@@ -36,7 +41,9 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 }
 
 func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) error {
-	return nil
+	n, err := fh.w.Write(req.Data)
+	resp.Size = n
+	return err
 }
 
 var (
