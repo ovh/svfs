@@ -18,6 +18,16 @@ type Root struct {
 	*Directory
 }
 
+func (r *Root) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
+	// TODO : implement container creation
+	return nil, nil, fuse.ENOTSUP
+}
+
+func (r *Root) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
+	// TODO : implement container removal
+	return fuse.ENOTSUP
+}
+
 func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error) {
 	var (
 		baseC = make(map[string]swift.Container)
@@ -70,5 +80,9 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 	return entries, nil
 }
 
-var _ Node = (*Directory)(nil)
-var _ fs.Node = (*Directory)(nil)
+var (
+	_ Node           = (*Root)(nil)
+	_ fs.Node        = (*Root)(nil)
+	_ fs.NodeCreater = (*Root)(nil)
+	_ fs.NodeRemover = (*Root)(nil)
+)
