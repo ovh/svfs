@@ -11,6 +11,7 @@ import (
 )
 
 type ObjectHandle struct {
+	p *Directory
 	r *swift.ObjectOpenFile
 	w *swift.ObjectCreateFile
 }
@@ -36,6 +37,9 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 	}
 	if fh.w != nil {
 		fh.w.Close()
+	}
+	if fh.p != nil {
+		fh.p.children = []Node{}
 	}
 	return nil
 }

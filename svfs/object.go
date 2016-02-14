@@ -13,6 +13,7 @@ type Object struct {
 	s         *swift.Connection
 	so        *swift.Object
 	c         *swift.Container
+	p         *Directory
 	segmented bool
 }
 
@@ -33,7 +34,7 @@ func (o *Object) Export() fuse.Dirent {
 }
 
 func (o *Object) open(mode fuse.OpenFlags) (oh *ObjectHandle, err error) {
-	oh = new(ObjectHandle)
+	oh = &ObjectHandle{p: o.p}
 
 	// Modes
 	if mode.IsReadOnly() {
