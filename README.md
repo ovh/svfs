@@ -17,6 +17,10 @@ As the development goes, features are added one after another. For the moment th
 * SVFS structure and node attributes are cached as you access them and eviction only occurs on write or remove operations.
 * SVFS node size is not refreshed after a write operation.
 * SVFS container creation and removal is not supported.
+* SVFS does not support move/rename/mkdir operations for now (a dirty trick will be required due to the way swift works).
 
 ### License
 This work is under the Apache license, see the [LICENSE](LICENSE) file for details.
+
+### Author
+Xavier Lucas
