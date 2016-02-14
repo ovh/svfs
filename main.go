@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/ncw/swift"
-	"github.com/xlucas/svfs/fs"
+	"github.com/xlucas/svfs/svfs"
 
 	fuse "bazil.org/fuse"
 	fusefs "bazil.org/fuse/fs"
@@ -54,7 +54,7 @@ func main() {
 	}
 
 	// Init SVFS
-	svfs := &fs.SVFS{}
+	svfs := &svfs.SVFS{}
 	if err = svfs.Init(&sc); err != nil {
 		log.Fatal(err)
 	}
