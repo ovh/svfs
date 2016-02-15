@@ -6,7 +6,7 @@
 This is not an official project of the Openstack community.
 
 ### Usage
-`svfs -a https://auth.cloud.ovh.net/v2.0 -u user -p password -r region -t tenant /path/to/mountpoint`
+`svfs -a auth_url -u user -p password -r region -t tenant /path/to/mountpoint`
 
 ### Project status
 This is the start of this project, and thus it's obviously missing pieces. Take a look at the limitations section for details.
@@ -18,6 +18,8 @@ As the development goes, features are added one after another. For the moment th
 * SVFS does not handle kernel cache invalidation, thus file attributes may appear stale if file content changed.
 * SVFS container creation and removal is not supported.
 * SVFS does not support mkdir operations for now.
+
+SVFS limitations and particularities of using Openstack Swift as a POSIX filesystem are discussed in the [docs](docs).
 
 ### License
 This work is under the Apache license, see the [LICENSE](LICENSE) file for details.

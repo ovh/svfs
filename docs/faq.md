@@ -1,3 +1,5 @@
+# FAQ
+
 ### Why can't I set uid/guid and permissions ?
 
 Openstack Swift object storage does not handle file ownership or permissions
