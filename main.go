@@ -16,23 +16,26 @@ import (
 
 func main() {
 	var (
-		debug bool
-		fs    *svfs.SVFS
-		srv   *fusefs.Server
-		sc    = swift.Connection{}
+		debug     bool
+		fs        *svfs.SVFS
+		srv       *fusefs.Server
+		sc        = swift.Connection{}
+		container string
 	)
 
 	// Logger
 	log.SetOutput(os.Stdout)
+	flag.BoolVar(&debug, "debug", false, "Enable fuse debug log")
 
 	// FS options
-	flag.StringVar(&sc.UserName, "u", "", "User name")
-	flag.StringVar(&sc.ApiKey, "p", "", "User password")
 	flag.StringVar(&sc.AuthUrl, "a", "https://auth.cloud.ovh.net/v2.0", "Authentication URL")
-	flag.StringVar(&sc.Region, "r", "", "Region")
-	flag.StringVar(&sc.Tenant, "t", "", "Tenant name")
-	flag.StringVar(&sc.StorageUrl, "s", "", "Storage URL")
+	flag.StringVar(&container, "c", "", "Container name")
 	flag.StringVar(&sc.AuthToken, "k", "", "Authentication token")
+	flag.StringVar(&sc.ApiKey, "p", "", "User password")
+	flag.StringVar(&sc.UserName, "u", "", "User name")
+	flag.StringVar(&sc.Region, "r", "", "Region")
+	flag.StringVar(&sc.StorageUrl, "s", "", "Storage URL")
+	flag.StringVar(&sc.Tenant, "t", "", "Tenant name")
 	flag.IntVar(&sc.AuthVersion, "v", 0, "Authentication version")
 	flag.BoolVar(&debug, "debug", false, "Enable fuse debug log")
 	flag.Usage = func() {
@@ -76,7 +79,7 @@ func main() {
 
 	// Init SVFS
 	fs = &svfs.SVFS{}
-	if err = fs.Init(&sc); err != nil {
+	if err = fs.Init(&sc, container); err != nil {
 		goto Err
 	}
 
