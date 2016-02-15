@@ -155,7 +155,7 @@ func (d *Directory) Name() string {
 func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 	// Delete from swift
 	err := d.s.ObjectDelete(d.c.Name, d.path+req.Name)
-	if err != nil {
+	if err != nil && err != swift.ObjectNotFound {
 		return err
 	}
 
