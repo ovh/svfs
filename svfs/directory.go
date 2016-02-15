@@ -102,7 +102,7 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 			fileName = strings.TrimPrefix(o.Name, d.path)
 		)
 		// This is a directory
-		if FolderRegex.Match([]byte(o.Name)) {
+		if FolderRegex.Match([]byte(o.Name)) && fileName != "" {
 			child = &Directory{
 				s:    d.s,
 				c:    d.c,
@@ -122,8 +122,10 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 			}
 		}
 
-		d.children = append(d.children, child)
-		entries = append(entries, child.Export())
+		if child != nil {
+			d.children = append(d.children, child)
+			entries = append(entries, child.Export())
+		}
 	}
 
 	return entries, nil
