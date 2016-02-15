@@ -45,9 +45,6 @@ func (o *Object) open(mode fuse.OpenFlags) (oh *ObjectHandle, err error) {
 		oh.w, err = o.s.ObjectCreate(o.c.Name, o.so.Name, false, "", "application/octet-sream", nil)
 		return oh, err
 	}
-	if mode.IsReadWrite() {
-		return nil, fuse.ENOTSUP
-	}
 
 	return nil, fuse.ENOTSUP
 }
