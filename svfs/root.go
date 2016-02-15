@@ -69,6 +69,7 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 	for name, container := range baseC {
 		c := container
 		segment := segC[name]
+
 		child := Container{
 			Directory: &Directory{
 				s:    r.s,

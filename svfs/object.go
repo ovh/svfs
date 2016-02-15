@@ -13,6 +13,7 @@ type Object struct {
 	s         *swift.Connection
 	so        *swift.Object
 	c         *swift.Container
+	cs        *swift.Container
 	p         *Directory
 	segmented bool
 }
