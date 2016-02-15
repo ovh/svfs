@@ -15,7 +15,13 @@ import (
 )
 
 func main() {
-	sc := swift.Connection{}
+	var (
+		fs  *svfs.SVFS
+		srv *fusefs.Server
+		sc  = swift.Connection{}
+	)
+
+	// Logger
 	log.SetOutput(os.Stderr)
 
 	// FS options
@@ -50,24 +56,30 @@ func main() {
 
 	// Pre-Serve: authenticate to identity endpoint
 	if err = sc.Authenticate(); err != nil {
-		log.Fatal(err)
+		goto Err
 	}
 
 	// Init SVFS
-	svfs := &svfs.SVFS{}
-	if err = svfs.Init(&sc); err != nil {
-		log.Fatal(err)
+	fs = &svfs.SVFS{}
+	if err = fs.Init(&sc); err != nil {
+		goto Err
 	}
 
 	// Serve SVFS
-	srv := fusefs.New(c, nil)
-	if err = srv.Serve(svfs); err != nil {
-		log.Fatal(err)
+	srv = fusefs.New(c, nil)
+	if err = srv.Serve(fs); err != nil {
+		goto Err
 	}
 
 	// Check for mount errors
 	<-c.Ready
 	if err = c.MountError; err != nil {
-		log.Fatal(err)
+		goto Err
 	}
+
+	return
+
+Err:
+	fuse.Unmount(mountpoint)
+	log.Fatal(err)
 }
