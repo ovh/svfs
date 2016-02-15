@@ -37,7 +37,6 @@ func main() {
 	flag.StringVar(&sc.StorageUrl, "s", "", "Storage URL")
 	flag.StringVar(&sc.Tenant, "t", "", "Tenant name")
 	flag.IntVar(&sc.AuthVersion, "v", 0, "Authentication version")
-	flag.BoolVar(&debug, "debug", false, "Enable fuse debug log")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s :\n", os.Args[0])
 		flag.PrintDefaults()
