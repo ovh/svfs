@@ -12,7 +12,10 @@ type SVFS struct {
 
 func (s *SVFS) Init(sc *swift.Connection) error {
 	s.s = sc
-	return s.s.Authenticate()
+	if !s.s.Authenticated() {
+		return s.s.Authenticate()
+	}
+	return nil
 }
 
 func (s *SVFS) Root() (fs.Node, error) {
