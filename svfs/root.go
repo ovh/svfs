@@ -34,8 +34,8 @@ func (r *Root) Rename(ctx context.Context, req *fuse.RenameRequest, newDir fs.No
 
 func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error) {
 	var (
-		baseC = make(map[string]swift.Container)
-		segC  = make(map[string]swift.Container)
+		baseC = make(map[string]*swift.Container)
+		segC  = make(map[string]*swift.Container)
 	)
 
 	if len(r.children) > 0 {
@@ -46,35 +46,37 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 	}
 
 	// Retrieve base container
-	c, err := r.s.ContainersAll(nil)
+	cs, err := r.s.ContainersAll(nil)
 	if err != nil {
 		return nil, err
 	}
 
 	// Find segments
-	for _, container := range c {
+	for _, container := range cs {
+		c := container
 		name := container.Name
 		if !SegmentRegex.Match([]byte(name)) {
-			baseC[name] = container
+			baseC[name] = &c
 			continue
 		}
 		if SegmentRegex.Match([]byte(name)) {
-			segC[strings.TrimSuffix(name, "_segments")] = container
+			segC[strings.TrimSuffix(name, "_segments")] = &c
 			continue
 		}
 	}
 
 	// Register children
 	for name, container := range baseC {
+		c := container
 		segment := segC[name]
 		child := Container{
 			Directory: &Directory{
 				s:    r.s,
-				c:    &container,
+				c:    c,
 				path: "",
 				name: name,
 			},
-			cs: &segment,
+			cs: segment,
 		}
 
 		r.children = append(r.children, &child)
