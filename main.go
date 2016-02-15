@@ -16,13 +16,14 @@ import (
 
 func main() {
 	var (
-		fs  *svfs.SVFS
-		srv *fusefs.Server
-		sc  = swift.Connection{}
+		debug bool
+		fs    *svfs.SVFS
+		srv   *fusefs.Server
+		sc    = swift.Connection{}
 	)
 
 	// Logger
-	log.SetOutput(os.Stderr)
+	log.SetOutput(os.Stdout)
 
 	// FS options
 	flag.StringVar(&sc.UserName, "u", "", "User name")
@@ -33,11 +34,19 @@ func main() {
 	flag.StringVar(&sc.StorageUrl, "s", "", "Storage URL")
 	flag.StringVar(&sc.AuthToken, "k", "", "Authentication token")
 	flag.IntVar(&sc.AuthVersion, "v", 0, "Authentication version")
+	flag.BoolVar(&debug, "debug", false, "Enable fuse debug log")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s :\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+
+	// Debug
+	if debug {
+		fuse.Debug = func(msg interface{}) {
+			log.Printf("FUSE: %s\n", msg)
+		}
+	}
 
 	// Mountpoint is mandatory
 	if flag.NArg() != 1 {
