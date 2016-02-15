@@ -30,6 +30,9 @@ func main() {
 	flag.StringVar(&sc.AuthUrl, "a", "https://auth.cloud.ovh.net/v2.0", "Authentication URL")
 	flag.StringVar(&sc.Region, "r", "", "Region")
 	flag.StringVar(&sc.Tenant, "t", "", "Tenant name")
+	flag.StringVar(&sc.StorageUrl, "s", "", "Storage URL")
+	flag.StringVar(&sc.AuthToken, "k", "", "Authentication token")
+	flag.IntVar(&sc.AuthVersion, "v", 0, "Authentication version")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s :\n", os.Args[0])
 		flag.PrintDefaults()
@@ -55,8 +58,11 @@ func main() {
 	defer c.Close()
 
 	// Pre-Serve: authenticate to identity endpoint
-	if err = sc.Authenticate(); err != nil {
-		goto Err
+	// if no token is specified
+	if !sc.Authenticated() {
+		if err = sc.Authenticate(); err != nil {
+			goto Err
+		}
 	}
 
 	// Init SVFS
