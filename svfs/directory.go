@@ -77,6 +77,8 @@ func (d *Directory) Export() fuse.Dirent {
 }
 
 func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error) {
+	dirs := make(map[string]bool)
+
 	// Cache hit
 	if len(d.children) > 0 {
 		for _, child := range d.children {
@@ -102,16 +104,29 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 			fileName = strings.TrimPrefix(o.Name, d.path)
 		)
 		// This is a directory
-		if FolderRegex.Match([]byte(o.Name)) && fileName != "" {
+		if o.ContentType == "application/directory" && !FolderRegex.Match([]byte(o.Name)) {
 			child = &Directory{
 				s:    d.s,
 				c:    d.c,
-				path: o.Name,
-				name: fileName[:len(fileName)-1],
+				path: o.Name + "/",
+				name: fileName,
 			}
-		}
-		// This is a swift object
-		if !FolderRegex.Match([]byte(o.Name)) {
+			dirs[fileName] = true
+		} else if o.PseudoDirectory &&
+			FolderRegex.Match([]byte(o.Name)) && fileName != "" {
+			// This is a pseudo directory. Add it only if the real directory is missing
+			realName := fileName[:len(fileName)-1]
+			if !dirs[realName] {
+				child = &Directory{
+					s:    d.s,
+					c:    d.c,
+					path: o.Name,
+					name: realName,
+				}
+				dirs[realName] = true
+			}
+		} else if !FolderRegex.Match([]byte(o.Name)) {
+			// This is a swift object
 			child = &Object{
 				path: o.Name,
 				name: fileName,
