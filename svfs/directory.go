@@ -147,6 +147,12 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 }
 
 func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
+	// Get children if this node was evicted from the kernel cache
+	if len(d.children) == 0 {
+		d.ReadDirAll(ctx)
+	}
+
+	// Find matching child
 	for _, item := range d.children {
 		if item.Name() == req.Name {
 			if n, ok := item.(*Container); ok {
@@ -160,6 +166,7 @@ func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *f
 			}
 		}
 	}
+
 	return nil, fuse.ENOENT
 }
 
