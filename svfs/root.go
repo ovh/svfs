@@ -23,6 +23,10 @@ func (r *Root) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.C
 	return nil, nil, fuse.ENOTSUP
 }
 
+func (r *Root) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error) {
+	return nil, fuse.ENOTSUP
+}
+
 func (r *Root) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 	// TODO : implement container removal
 	return fuse.ENOTSUP
@@ -91,6 +95,7 @@ var (
 	_ Node           = (*Root)(nil)
 	_ fs.Node        = (*Root)(nil)
 	_ fs.NodeCreater = (*Root)(nil)
+	_ fs.NodeMkdirer = (*Root)(nil)
 	_ fs.NodeRemover = (*Root)(nil)
 	_ fs.NodeRenamer = (*Root)(nil)
 )
