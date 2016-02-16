@@ -170,6 +170,29 @@ func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *f
 	return nil, fuse.ENOENT
 }
 
+func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error) {
+	var (
+		objName = req.Name + "/"
+		absPath = d.path + objName
+	)
+
+	// Create the file in swift
+	if err := d.s.ObjectPutBytes(d.c.Name, absPath, nil, "application/directory"); err != nil {
+		return nil, fuse.EIO
+	}
+
+	// Cache eviction
+	d.children = []Node{}
+
+	// Directory object
+	return &Directory{
+		name: req.Name,
+		path: absPath,
+		s:    d.s,
+		c:    d.c,
+	}, nil
+}
+
 func (d *Directory) Name() string {
 	return d.name
 }
@@ -213,5 +236,6 @@ var (
 	_ fs.Node        = (*Directory)(nil)
 	_ fs.NodeCreater = (*Directory)(nil)
 	_ fs.NodeRemover = (*Directory)(nil)
+	_ fs.NodeMkdirer = (*Directory)(nil)
 	_ fs.NodeRenamer = (*Directory)(nil)
 )
