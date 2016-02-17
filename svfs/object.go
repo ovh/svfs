@@ -40,7 +40,10 @@ func (o *Object) open(mode fuse.OpenFlags) (oh *ObjectHandle, err error) {
 		t: o,
 	}
 
-	// Modes
+	// Append mode is not supported
+	if mode&fuse.OpenAppend == fuse.OpenAppend {
+		return nil, fuse.ENOTSUP
+	}
 	if mode.IsReadOnly() {
 		oh.r, _, err = o.s.ObjectOpen(o.c.Name, o.so.Name, false, nil)
 		return oh, err

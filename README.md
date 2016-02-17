@@ -28,6 +28,7 @@ As the development goes, features are added one after another. For the moment th
 * SVFS structure and node attributes are cached as you access them and eviction only occurs on write or remove operations.
 * SVFS does not handle kernel cache invalidation, thus file attributes may appear stale if file content changed.
 * SVFS container creation and removal is not supported.
+* SVFS does not support opening a file in append mode.
 * SVFS does not support uploading SLO/DLO objects and may show erroneous file size of 0 (manifest file).
 
 SVFS limitations and particularities of using Openstack Swift as a POSIX filesystem are discussed in the [docs](docs).
