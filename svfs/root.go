@@ -91,6 +91,22 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 	return entries, nil
 }
 
+func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
+	if len(r.children) == 0 {
+		r.ReadDirAll(ctx)
+	}
+
+	for _, item := range r.children {
+		if item.Name() == req.Name {
+			if n, ok := item.(*Container); ok {
+				return n, nil
+			}
+		}
+	}
+
+	return nil, fuse.ENOENT
+}
+
 var (
 	_ Node           = (*Root)(nil)
 	_ fs.Node        = (*Root)(nil)

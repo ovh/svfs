@@ -57,7 +57,6 @@ func (o *Object) open(mode fuse.OpenFlags) (oh *ObjectHandle, err error) {
 }
 
 func (o *Object) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
-	resp.Flags = fuse.OpenDirectIO
 	return o.open(req.Flags)
 }
 

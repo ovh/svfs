@@ -41,15 +41,17 @@ func (s *SVFS) Root() (fs.Node, error) {
 
 		return &Container{
 			Directory: &Directory{
-				s: s.s,
-				c: &baseC,
+				apex: true,
+				s:    s.s,
+				c:    &baseC,
 			},
 			cs: &segC,
 		}, nil
 	}
 	return &Root{
 		Directory: &Directory{
-			s: s.s,
+			apex: true,
+			s:    s.s,
 		},
 	}, nil
 }
