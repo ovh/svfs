@@ -12,6 +12,7 @@ import (
 
 type ObjectHandle struct {
 	p *Directory
+	t *Object
 	r *swift.ObjectOpenFile
 	w *swift.ObjectCreateFile
 }
@@ -46,6 +47,11 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 
 func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) error {
 	n, err := fh.w.Write(req.Data)
+	if req.Offset == 0 {
+		fh.t.so.Bytes = int64(n)
+	} else if req.Offset+int64(len(req.Data))+1 > fh.t.so.Bytes {
+		fh.t.so.Bytes = req.Offset + int64(len(req.Data)) + 1
+	}
 	resp.Size = n
 	return err
 }

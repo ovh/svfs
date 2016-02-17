@@ -35,7 +35,10 @@ func (o *Object) Export() fuse.Dirent {
 }
 
 func (o *Object) open(mode fuse.OpenFlags) (oh *ObjectHandle, err error) {
-	oh = &ObjectHandle{p: o.p}
+	oh = &ObjectHandle{
+		p: o.p,
+		t: o,
+	}
 
 	// Modes
 	if mode.IsReadOnly() {
