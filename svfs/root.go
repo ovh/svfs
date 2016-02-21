@@ -40,11 +40,13 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 	var (
 		baseC = make(map[string]*swift.Container)
 		segC  = make(map[string]*swift.Container)
+		list  []Node
 	)
 
-	if len(r.children) > 0 {
-		for _, c := range r.children {
-			entries = append(entries, c.Export())
+	// Cache hit
+	if nodes := r.cache.Get(r.path); nodes != nil {
+		for _, node := range nodes {
+			entries = append(entries, node.Export())
 		}
 		return entries, nil
 	}
@@ -76,27 +78,33 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 
 		child := Container{
 			Directory: &Directory{
-				s:    r.s,
-				c:    c,
-				path: "",
-				name: name,
+				s:     r.s,
+				c:     c,
+				cache: r.cache,
+				name:  name,
 			},
 			cs: segment,
 		}
 
-		r.children = append(r.children, &child)
+		list = append(list, &child)
 		entries = append(entries, child.Export())
 	}
+
+	r.cache.Set(r.path, list)
 
 	return entries, nil
 }
 
 func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
-	if len(r.children) == 0 {
+	var nodes []Node
+
+	// Fill cache if expired
+	if nodes = r.cache.Get(r.path); nodes == nil {
 		r.ReadDirAll(ctx)
+		nodes = r.cache.Get(r.path)
 	}
 
-	for _, item := range r.children {
+	for _, item := range nodes {
 		if item.Name() == req.Name {
 			if n, ok := item.(*Container); ok {
 				return n, nil

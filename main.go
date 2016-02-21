@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/ncw/swift"
 	"github.com/xlucas/svfs/svfs"
@@ -16,10 +17,11 @@ import (
 
 func main() {
 	var (
-		debug     bool
 		fs        *svfs.SVFS
-		srv       *fusefs.Server
 		sc        = swift.Connection{}
+		srv       *fusefs.Server
+		cconf     = svfs.CacheConfig{}
+		debug     bool
 		container string
 	)
 
@@ -27,7 +29,7 @@ func main() {
 	log.SetOutput(os.Stdout)
 	flag.BoolVar(&debug, "debug", false, "Enable fuse debug log")
 
-	// FS options
+	// Swift options
 	flag.StringVar(&sc.AuthUrl, "a", "https://auth.cloud.ovh.net/v2.0", "Authentication URL")
 	flag.StringVar(&container, "c", "", "Container name")
 	flag.StringVar(&sc.AuthToken, "k", "", "Authentication token")
@@ -37,6 +39,12 @@ func main() {
 	flag.StringVar(&sc.StorageUrl, "s", "", "Storage URL")
 	flag.StringVar(&sc.Tenant, "t", "", "Tenant name")
 	flag.IntVar(&sc.AuthVersion, "v", 0, "Authentication version")
+
+	// Cache Options
+	flag.DurationVar(&cconf.Timeout, "cache-ttl", 1*time.Minute, "Cache timeout")
+	flag.Int64Var(&cconf.MaxEntries, "cache-max-entries", -1, "Maximum overall entries allowed in cache")
+	flag.Int64Var(&cconf.MaxAccess, "cache-max-access", -1, "Maximum access count to cached entries")
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s :\n", os.Args[0])
 		flag.PrintDefaults()
@@ -78,7 +86,7 @@ func main() {
 
 	// Init SVFS
 	fs = &svfs.SVFS{}
-	if err = fs.Init(&sc, container); err != nil {
+	if err = fs.Init(&sc, &cconf, container); err != nil {
 		goto Err
 	}
 

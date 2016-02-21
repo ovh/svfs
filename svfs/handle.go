@@ -40,7 +40,7 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 		fh.w.Close()
 	}
 	if fh.p != nil {
-		fh.p.children = []Node{}
+		fh.p.cache.Delete(fh.p.path)
 	}
 	return nil
 }

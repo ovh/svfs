@@ -9,12 +9,14 @@ import (
 // SVFS implements the Swift Virtual File System.
 type SVFS struct {
 	s     *swift.Connection
+	cache *Cache
 	cName string
 }
 
-func (s *SVFS) Init(sc *swift.Connection, cName string) error {
+func (s *SVFS) Init(sc *swift.Connection, cconf *CacheConfig, cName string) error {
 	s.s = sc
 	s.cName = cName
+	s.cache = NewCache(cconf)
 
 	// Authenticate if we don't have a token
 	// and storage URL
@@ -41,17 +43,19 @@ func (s *SVFS) Root() (fs.Node, error) {
 
 		return &Container{
 			Directory: &Directory{
-				apex: true,
-				s:    s.s,
-				c:    &baseC,
+				apex:  true,
+				cache: s.cache,
+				s:     s.s,
+				c:     &baseC,
 			},
 			cs: &segC,
 		}, nil
 	}
 	return &Root{
 		Directory: &Directory{
-			apex: true,
-			s:    s.s,
+			apex:  true,
+			cache: s.cache,
+			s:     s.s,
 		},
 	}, nil
 }
