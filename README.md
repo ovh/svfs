@@ -43,13 +43,15 @@ svfs \
 
 ### Caching
 
-Caching can be seens as a 2-layer cache where SVFS is layer 1 and the Kernel layer 2.
+Caching can be seen as a 2-layer cache where SVFS is layer 1 and the Kernel layer 2.
 
-SVFS cache configuration is described below.
+You should adapt SVFS cache configuration to your network connection and system resources.
+For instance a high latency system with low bandwith should maximize the cache entry size and use high ttls while a system with a reliable connection should lower these parameters or set access rates. Listing large directories or segmented objects too frequently from your storage provider may significantly slow down SVFS performance.
 
-* Targeted cache size : `--cache-max-entries`. Default is -1 (it grows unlimited).
-* Targeted cache entry timeout : `--cache-ttl`. Default is 1 minute.
-* Targeted cache entry access count : `--cache-max-access` Default is -1 (unlimited).
+Available options are :
+* `--cache-max-entries` : targeted cache size. Default value is -1 (it grows unlimited).
+* `--cache-max-access` : targeted cache entry access count. Default value is -1 (unlimited).
+* `--cache-ttl`: targeted cache entry timeout. Default value is 1 minute.
 
 ### Limitations
 For the moment the following limitations will kick-in :

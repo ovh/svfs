@@ -138,7 +138,7 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 		return nil, err
 	}
 
-	var children []Node
+	var children = make([]Node, 0)
 
 	// Fill cache
 	for _, object := range objects {

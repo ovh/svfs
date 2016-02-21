@@ -40,7 +40,7 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 	var (
 		baseC = make(map[string]*swift.Container)
 		segC  = make(map[string]*swift.Container)
-		list  []Node
+		list  = make([]Node, 0)
 	)
 
 	// Cache hit

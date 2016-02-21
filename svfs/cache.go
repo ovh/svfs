@@ -48,17 +48,13 @@ func (c *Cache) Get(path string) []Node {
 
 	// Found but expired
 	if time.Now().After(v.cachingDate.Add(c.config.Timeout)) {
-		defer func() {
-			c.Delete(path)
-		}()
+		defer c.Delete(path)
 		return nil
 	}
 
 	if v.temporary ||
 		(!(c.config.MaxAccess < 0) && v.accessCount == uint64(c.config.MaxAccess)) {
-		defer func() {
-			c.Delete(path)
-		}()
+		defer c.Delete(path)
 	}
 
 	return v.list
