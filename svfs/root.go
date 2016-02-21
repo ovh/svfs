@@ -80,6 +80,7 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 			Directory: &Directory{
 				s:     r.s,
 				c:     c,
+				l:     r.l,
 				cache: r.cache,
 				name:  name,
 			},

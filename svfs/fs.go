@@ -1,6 +1,8 @@
 package svfs
 
 import (
+	"time"
+
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"github.com/ncw/swift"
@@ -8,15 +10,28 @@ import (
 
 // SVFS implements the Swift Virtual File System.
 type SVFS struct {
-	s     *swift.Connection
-	cache *Cache
-	cName string
+	s           *swift.Connection
+	cache       *Cache
+	lister      *DirLister
+	conf        *Config
+	concurrency uint64
 }
 
-func (s *SVFS) Init(sc *swift.Connection, cconf *CacheConfig, cName string) error {
+type Config struct {
+	Container             string
+	ConnectTimeout        time.Duration
+	MaxReaddirConcurrency uint64
+}
+
+func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) error {
 	s.s = sc
-	s.cName = cName
+	s.conf = conf
 	s.cache = NewCache(cconf)
+	s.s.ConnectTimeout = conf.ConnectTimeout
+	s.lister = &DirLister{
+		c:           s.s,
+		concurrency: conf.MaxReaddirConcurrency,
+	}
 
 	// Authenticate if we don't have a token
 	// and storage URL
@@ -24,19 +39,22 @@ func (s *SVFS) Init(sc *swift.Connection, cconf *CacheConfig, cName string) erro
 		return s.s.Authenticate()
 	}
 
+	// Start directory lister
+	s.lister.Start()
+
 	return nil
 }
 
 func (s *SVFS) Root() (fs.Node, error) {
-	if s.cName != "" {
+	if s.conf.Container != "" {
 		// If a specific container is specified
 		// in mount options, find it and relevant
 		// segment container too if present.
-		baseC, _, err := s.s.Container(s.cName)
+		baseC, _, err := s.s.Container(s.conf.Container)
 		if err != nil {
 			return nil, fuse.ENOENT
 		}
-		segC, _, err := s.s.Container(s.cName + "_segments")
+		segC, _, err := s.s.Container(s.conf.Container + "_segments")
 		if err != nil && err != swift.ContainerNotFound {
 			return nil, fuse.EIO
 		}
@@ -47,6 +65,7 @@ func (s *SVFS) Root() (fs.Node, error) {
 				cache: s.cache,
 				s:     s.s,
 				c:     &baseC,
+				l:     s.lister,
 			},
 			cs: &segC,
 		}, nil
@@ -56,6 +75,7 @@ func (s *SVFS) Root() (fs.Node, error) {
 			apex:  true,
 			cache: s.cache,
 			s:     s.s,
+			l:     s.lister,
 		},
 	}, nil
 }

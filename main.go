@@ -17,12 +17,12 @@ import (
 
 func main() {
 	var (
-		fs        *svfs.SVFS
-		sc        = swift.Connection{}
-		srv       *fusefs.Server
-		cconf     = svfs.CacheConfig{}
-		debug     bool
-		container string
+		debug bool
+		fs    *svfs.SVFS
+		sc    = swift.Connection{}
+		srv   *fusefs.Server
+		conf  = svfs.Config{}
+		cconf = svfs.CacheConfig{}
 	)
 
 	// Logger
@@ -30,15 +30,19 @@ func main() {
 	flag.BoolVar(&debug, "debug", false, "Enable fuse debug log")
 
 	// Swift options
-	flag.StringVar(&sc.AuthUrl, "a", "https://auth.cloud.ovh.net/v2.0", "Authentication URL")
-	flag.StringVar(&container, "c", "", "Container name")
-	flag.StringVar(&sc.AuthToken, "k", "", "Authentication token")
-	flag.StringVar(&sc.ApiKey, "p", "", "User password")
-	flag.StringVar(&sc.UserName, "u", "", "User name")
-	flag.StringVar(&sc.Region, "r", "", "Region")
-	flag.StringVar(&sc.StorageUrl, "s", "", "Storage URL")
-	flag.StringVar(&sc.Tenant, "t", "", "Tenant name")
-	flag.IntVar(&sc.AuthVersion, "v", 0, "Authentication version")
+	flag.StringVar(&sc.AuthUrl, "os-auth-url", "https://auth.cloud.ovh.net/v2.0", "Authentication URL")
+	flag.StringVar(&conf.Container, "os-container-name", "", "Container name")
+	flag.StringVar(&sc.AuthToken, "os-token", "", "Authentication token")
+	flag.StringVar(&sc.ApiKey, "os-password", "", "User password")
+	flag.StringVar(&sc.UserName, "os-username", "", "User name")
+	flag.StringVar(&sc.Region, "os-region-name", "", "Region")
+	flag.StringVar(&sc.StorageUrl, "os-storage-url", "", "Storage URL")
+	flag.StringVar(&sc.Tenant, "os-tenant-name", "", "Tenant name")
+	flag.IntVar(&sc.AuthVersion, "os-auth-version", 0, "Authentication version, 0 = auto")
+	flag.DurationVar(&conf.ConnectTimeout, "os-connect-timeout", 5*time.Minute, "Swift connection timeout")
+
+	// Concurrency
+	flag.Uint64Var(&conf.MaxReaddirConcurrency, "max-readdir-concurrency", 20, "Overall concurrency factor when listing directories")
 
 	// Cache Options
 	flag.DurationVar(&cconf.Timeout, "cache-ttl", 1*time.Minute, "Cache timeout")
@@ -46,7 +50,8 @@ func main() {
 	flag.Int64Var(&cconf.MaxAccess, "cache-max-access", -1, "Maximum access count to cached entries")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s :\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage : %s [OPTIONS] MOUNTPOINT\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Available options :\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -86,7 +91,7 @@ func main() {
 
 	// Init SVFS
 	fs = &svfs.SVFS{}
-	if err = fs.Init(&sc, &cconf, container); err != nil {
+	if err = fs.Init(&sc, &conf, &cconf); err != nil {
 		goto Err
 	}
 

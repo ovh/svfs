@@ -3,8 +3,8 @@ package svfs
 import (
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/ncw/swift"
 
@@ -19,6 +19,39 @@ var (
 	ObjContentType = "application/octet-stream"
 )
 
+type DirLister struct {
+	c           *swift.Connection
+	concurrency uint64
+	taskChan    chan DirListerTask
+}
+
+type DirListerTask struct {
+	o  *Object
+	rc chan<- *Object
+}
+
+func (dl *DirLister) Start() {
+	dl.taskChan = make(chan DirListerTask, dl.concurrency)
+	for i := 0; uint64(i) < dl.concurrency; i++ {
+		go func() {
+			for t := range dl.taskChan {
+				_, h, _ := dl.c.Object(t.o.c.Name, t.o.so.Name)
+				t.o.so.Bytes, _ = strconv.ParseInt(h["Content-Length"], 10, 64)
+				t.rc <- t.o
+			}
+		}()
+	}
+}
+
+func (dl *DirLister) AddTask(o *Object, c chan<- *Object) {
+	go func() {
+		dl.taskChan <- DirListerTask{
+			o:  o,
+			rc: c,
+		}
+	}()
+}
+
 type Directory struct {
 	apex  bool
 	name  string
@@ -26,7 +59,7 @@ type Directory struct {
 	cache *Cache
 	s     *swift.Connection
 	c     *swift.Container
-	m     sync.RWMutex
+	l     *DirLister
 }
 
 func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
@@ -82,7 +115,11 @@ func (d *Directory) Export() fuse.Dirent {
 }
 
 func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error) {
-	dirs := make(map[string]bool)
+	var (
+		dirs  = make(map[string]bool)
+		loC   = make(chan *Object, d.l.concurrency)
+		count = 0
+	)
 
 	// Cache check
 	if nodes := d.cache.Get(d.path); nodes != nil {
@@ -112,10 +149,12 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 		)
 		// This is a directory
 		if o.ContentType == DirContentType && !FolderRegex.Match([]byte(o.Name)) {
+			count++
 			dirs[fileName] = true
 			child = &Directory{
 				s:     d.s,
 				c:     d.c,
+				l:     d.l,
 				cache: d.cache,
 				path:  o.Name + "/",
 				name:  fileName,
@@ -123,12 +162,14 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 		} else if o.PseudoDirectory &&
 			FolderRegex.Match([]byte(o.Name)) && fileName != "" {
 			// This is a pseudo directory. Add it only if the real directory is missing
+			count++
 			realName := fileName[:len(fileName)-1]
 			if !dirs[realName] {
 				dirs[realName] = true
 				child = &Directory{
 					s:     d.s,
 					c:     d.c,
+					l:     d.l,
 					cache: d.cache,
 					path:  o.Name,
 					name:  realName,
@@ -136,7 +177,7 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 			}
 		} else if !FolderRegex.Match([]byte(o.Name)) {
 			// This is a swift object
-			child = &Object{
+			obj := &Object{
 				path: o.Name,
 				name: fileName,
 				s:    d.s,
@@ -144,11 +185,34 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 				so:   &o,
 				p:    d,
 			}
+
+			if o.Bytes == 0 &&
+				!o.PseudoDirectory &&
+				o.ContentType != DirContentType {
+				d.l.AddTask(obj, loC)
+				child = nil
+			} else {
+				count++
+				child = obj
+			}
+
 		}
 
 		if child != nil {
 			entries = append(entries, child.Export())
 			children = append(children, child)
+		}
+	}
+
+	if count != len(objects) {
+		for o := range loC {
+			count++
+			entries = append(entries, o.Export())
+			children = append(children, o)
+			if count == len(objects) {
+				close(loC)
+				break
+			}
 		}
 	}
 
