@@ -36,7 +36,9 @@ func (c *Cache) key(container, path string) string {
 }
 
 func (c *Cache) Delete(container, path string) {
-	if !c.content[c.key(container, path)].temporary {
+	_, found := c.content[c.key(container, path)]
+	if found &&
+		!c.content[c.key(container, path)].temporary {
 		c.nodeCount -= uint64(len(c.content[c.key(container, path)].list))
 	}
 	delete(c.content, c.key(container, path))
