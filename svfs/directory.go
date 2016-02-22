@@ -254,7 +254,7 @@ func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node,
 	}
 
 	// Cache eviction
-	EntryCache.Delete("", d.path)
+	EntryCache.Delete(d.c.Name, d.path)
 
 	// Directory object
 	return &Directory{
