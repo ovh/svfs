@@ -36,7 +36,7 @@ Use token and storage URL instead of openstack credentials (this can be useful f
 ```
 svfs \
 --os-storage-url storage_url \
---os-token token \
+--os-auth-token token \
 /path/to/mountpoint &
 ```
 

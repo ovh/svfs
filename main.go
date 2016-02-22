@@ -32,7 +32,7 @@ func main() {
 	// Swift options
 	flag.StringVar(&sc.AuthUrl, "os-auth-url", "https://auth.cloud.ovh.net/v2.0", "Authentication URL")
 	flag.StringVar(&conf.Container, "os-container-name", "", "Container name")
-	flag.StringVar(&sc.AuthToken, "os-token", "", "Authentication token")
+	flag.StringVar(&sc.AuthToken, "os-auth-token", "", "Authentication token")
 	flag.StringVar(&sc.ApiKey, "os-password", "", "User password")
 	flag.StringVar(&sc.UserName, "os-username", "", "User name")
 	flag.StringVar(&sc.Region, "os-region-name", "", "Region")
