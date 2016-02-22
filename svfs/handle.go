@@ -40,7 +40,7 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 		fh.w.Close()
 	}
 	if fh.p != nil {
-		EntryCache.Delete("", fh.p.path)
+		EntryCache.Delete(fh.p.c.Name, fh.p.path)
 	}
 	return nil
 }
