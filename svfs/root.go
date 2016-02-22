@@ -44,7 +44,7 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 	)
 
 	// Cache hit
-	if nodes := r.cache.Get("", r.path); nodes != nil {
+	if nodes := EntryCache.Get("", r.path); nodes != nil {
 		for _, node := range nodes {
 			entries = append(entries, node.Export())
 		}
@@ -78,11 +78,9 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 
 		child := Container{
 			Directory: &Directory{
-				s:     r.s,
-				c:     c,
-				l:     r.l,
-				cache: r.cache,
-				name:  name,
+				s:    r.s,
+				c:    c,
+				name: name,
 			},
 			cs: segment,
 		}
@@ -91,7 +89,7 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 		entries = append(entries, child.Export())
 	}
 
-	r.cache.Set("", r.path, list)
+	EntryCache.Set("", r.path, list)
 
 	return entries, nil
 }
@@ -100,9 +98,9 @@ func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.L
 	var nodes []Node
 
 	// Fill cache if expired
-	if nodes = r.cache.Get("", r.path); nodes == nil {
+	if nodes = EntryCache.Get("", r.path); nodes == nil {
 		r.ReadDirAll(ctx)
-		nodes = r.cache.Get("", r.path)
+		nodes = EntryCache.Get("", r.path)
 	}
 
 	for _, item := range nodes {

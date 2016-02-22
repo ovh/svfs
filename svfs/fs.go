@@ -11,8 +11,6 @@ import (
 // SVFS implements the Swift Virtual File System.
 type SVFS struct {
 	s           *swift.Connection
-	cache       *Cache
-	lister      *DirLister
 	conf        *Config
 	concurrency uint64
 }
@@ -26,9 +24,9 @@ type Config struct {
 func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) error {
 	s.s = sc
 	s.conf = conf
-	s.cache = NewCache(cconf)
 	s.s.ConnectTimeout = conf.ConnectTimeout
-	s.lister = &DirLister{
+	EntryCache = NewCache(cconf)
+	DirectoryLister = &DirLister{
 		c:           s.s,
 		concurrency: conf.MaxReaddirConcurrency,
 	}
@@ -40,7 +38,7 @@ func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) erro
 	}
 
 	// Start directory lister
-	s.lister.Start()
+	DirectoryLister.Start()
 
 	return nil
 }
@@ -61,21 +59,17 @@ func (s *SVFS) Root() (fs.Node, error) {
 
 		return &Container{
 			Directory: &Directory{
-				apex:  true,
-				cache: s.cache,
-				s:     s.s,
-				c:     &baseC,
-				l:     s.lister,
+				apex: true,
+				s:    s.s,
+				c:    &baseC,
 			},
 			cs: &segC,
 		}, nil
 	}
 	return &Root{
 		Directory: &Directory{
-			apex:  true,
-			cache: s.cache,
-			s:     s.s,
-			l:     s.lister,
+			apex: true,
+			s:    s.s,
 		},
 	}, nil
 }

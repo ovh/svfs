@@ -14,9 +14,11 @@ import (
 )
 
 var (
-	FolderRegex    = regexp.MustCompile("^.+/$")
-	DirContentType = "application/directory"
-	ObjContentType = "application/octet-stream"
+	FolderRegex     = regexp.MustCompile("^.+/$")
+	DirContentType  = "application/directory"
+	ObjContentType  = "application/octet-stream"
+	EntryCache      = new(Cache)
+	DirectoryLister = new(DirLister)
 )
 
 type DirLister struct {
@@ -53,13 +55,11 @@ func (dl *DirLister) AddTask(o *Object, c chan<- *Object) {
 }
 
 type Directory struct {
-	apex  bool
-	name  string
-	path  string
-	cache *Cache
-	s     *swift.Connection
-	c     *swift.Container
-	l     *DirLister
+	apex bool
+	name string
+	path string
+	s    *swift.Connection
+	c    *swift.Container
 }
 
 func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
@@ -102,7 +102,7 @@ func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *f
 	}
 
 	// Force cache eviction
-	d.cache.Delete(d.c.Name, d.path)
+	EntryCache.Delete(d.c.Name, d.path)
 
 	return node, h, nil
 }
@@ -117,12 +117,12 @@ func (d *Directory) Export() fuse.Dirent {
 func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error) {
 	var (
 		dirs  = make(map[string]bool)
-		loC   = make(chan *Object, d.l.concurrency)
+		loC   = make(chan *Object, DirectoryLister.concurrency)
 		count = 0
 	)
 
 	// Cache check
-	if nodes := d.cache.Get(d.c.Name, d.path); nodes != nil {
+	if nodes := EntryCache.Get(d.c.Name, d.path); nodes != nil {
 		for _, node := range nodes {
 			entries = append(entries, node.Export())
 		}
@@ -151,12 +151,10 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 		if o.ContentType == DirContentType && !FolderRegex.Match([]byte(o.Name)) {
 			dirs[fileName] = true
 			child = &Directory{
-				s:     d.s,
-				c:     d.c,
-				l:     d.l,
-				cache: d.cache,
-				path:  o.Name + "/",
-				name:  fileName,
+				s:    d.s,
+				c:    d.c,
+				path: o.Name + "/",
+				name: fileName,
 			}
 		} else if o.PseudoDirectory &&
 			FolderRegex.Match([]byte(o.Name)) && fileName != "" {
@@ -165,12 +163,10 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 			if !dirs[realName] {
 				dirs[realName] = true
 				child = &Directory{
-					s:     d.s,
-					c:     d.c,
-					l:     d.l,
-					cache: d.cache,
-					path:  o.Name,
-					name:  realName,
+					s:    d.s,
+					c:    d.c,
+					path: o.Name,
+					name: realName,
 				}
 			}
 		} else if !FolderRegex.Match([]byte(o.Name)) {
@@ -187,7 +183,7 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 			if o.Bytes == 0 &&
 				!o.PseudoDirectory &&
 				o.ContentType != DirContentType {
-				d.l.AddTask(obj, loC)
+				DirectoryLister.AddTask(obj, loC)
 				child = nil
 				count++
 			} else {
@@ -215,7 +211,7 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 		}
 	}
 
-	d.cache.Set(d.c.Name, d.path, children)
+	EntryCache.Set(d.c.Name, d.path, children)
 
 	return entries, nil
 }
@@ -223,9 +219,9 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
 	var nodes []Node
 
-	if nodes = d.cache.Get(d.c.Name, d.path); nodes == nil {
+	if nodes = EntryCache.Get(d.c.Name, d.path); nodes == nil {
 		d.ReadDirAll(ctx)
-		nodes = d.cache.Get(d.c.Name, d.path)
+		nodes = EntryCache.Get(d.c.Name, d.path)
 	}
 
 	// Find matching child
@@ -258,15 +254,14 @@ func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node,
 	}
 
 	// Cache eviction
-	d.cache.Delete("", d.path)
+	EntryCache.Delete("", d.path)
 
 	// Directory object
 	return &Directory{
-		name:  req.Name,
-		path:  absPath,
-		cache: d.cache,
-		s:     d.s,
-		c:     d.c,
+		name: req.Name,
+		path: absPath,
+		s:    d.s,
+		c:    d.c,
 	}, nil
 }
 
@@ -288,7 +283,7 @@ func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 	}
 
 	// Cache eviction
-	d.cache.Delete(d.c.Name, d.path)
+	EntryCache.Delete(d.c.Name, d.path)
 
 	return nil
 }
@@ -301,14 +296,14 @@ func (d *Directory) Rename(ctx context.Context, req *fuse.RenameRequest, newDir 
 	// Swift move = copy + delete
 	if t, ok := newDir.(*Container); ok {
 		d.s.ObjectMove(d.c.Name, d.path+req.OldName, t.c.Name, t.path+req.NewName)
-		d.cache.Delete(d.c.Name, d.path)
-		t.cache.Delete(t.c.Name, t.path)
+		EntryCache.Delete(d.c.Name, d.path)
+		EntryCache.Delete(t.c.Name, t.path)
 		return nil
 	}
 	if t, ok := newDir.(*Directory); ok {
 		d.s.ObjectMove(d.c.Name, d.path+req.OldName, t.c.Name, t.path+req.NewName)
-		d.cache.Delete(d.c.Name, d.path)
-		t.cache.Delete(t.c.Name, t.path)
+		EntryCache.Delete(d.c.Name, d.path)
+		EntryCache.Delete(t.c.Name, t.path)
 		return nil
 	}
 	return nil
