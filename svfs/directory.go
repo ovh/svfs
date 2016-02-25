@@ -15,6 +15,7 @@ import (
 
 var (
 	FolderRegex     = regexp.MustCompile("^.+/$")
+	SubdirRegex     = regexp.MustCompile(".*/.*$")
 	DirContentType  = "application/directory"
 	ObjContentType  = "application/octet-stream"
 	EntryCache      = new(Cache)
@@ -22,7 +23,6 @@ var (
 )
 
 type DirLister struct {
-	c           *swift.Connection
 	concurrency uint64
 	taskChan    chan DirListerTask
 }
@@ -37,7 +37,7 @@ func (dl *DirLister) Start() {
 	for i := 0; uint64(i) < dl.concurrency; i++ {
 		go func() {
 			for t := range dl.taskChan {
-				_, h, _ := dl.c.Object(t.o.c.Name, t.o.so.Name)
+				_, h, _ := SwiftConnection.Object(t.o.c.Name, t.o.so.Name)
 				t.o.so.Bytes, _ = strconv.ParseInt(h["Content-Length"], 10, 64)
 				t.rc <- t.o
 			}
@@ -58,7 +58,6 @@ type Directory struct {
 	apex bool
 	name string
 	path string
-	s    *swift.Connection
 	c    *swift.Container
 }
 
@@ -71,7 +70,7 @@ func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
 func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
 	// Create an empty object in swift
 	path := d.path + req.Name
-	w, err := d.s.ObjectCreate(d.c.Name, path, false, "", ObjContentType, nil)
+	w, err := SwiftConnection.ObjectCreate(d.c.Name, path, false, "", ObjContentType, nil)
 	if err != nil {
 		return nil, nil, fuse.EIO
 	}
@@ -81,7 +80,7 @@ func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *f
 	w.Close()
 
 	// Retrieve it
-	obj, _, err := d.s.Object(d.c.Name, path)
+	obj, _, err := SwiftConnection.Object(d.c.Name, path)
 	if err != nil {
 		return nil, nil, fuse.EIO
 	}
@@ -90,7 +89,6 @@ func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *f
 	node := &Object{
 		name: req.Name,
 		path: path,
-		s:    d.s,
 		so:   &obj,
 		c:    d.c,
 	}
@@ -101,8 +99,8 @@ func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *f
 		return nil, nil, fuse.EIO
 	}
 
-	// Force cache eviction
-	EntryCache.Delete(d.c.Name, d.path)
+	// Cache it
+	EntryCache.Set(d.c.Name, d.path, req.Name, node)
 
 	return node, h, nil
 }
@@ -121,8 +119,10 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 		count = 0
 	)
 
+	defer close(loC)
+
 	// Cache check
-	if nodes := EntryCache.Get(d.c.Name, d.path); nodes != nil {
+	if nodes := EntryCache.GetAll(d.c.Name, d.path); nodes != nil {
 		for _, node := range nodes {
 			entries = append(entries, node.Export())
 		}
@@ -130,7 +130,7 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 	}
 
 	// Fetch objects
-	objects, err := d.s.ObjectsAll(d.c.Name, &swift.ObjectsOpts{
+	objects, err := SwiftConnection.ObjectsAll(d.c.Name, &swift.ObjectsOpts{
 		Delimiter: '/',
 		Prefix:    d.path,
 	})
@@ -138,7 +138,7 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 		return nil, err
 	}
 
-	var children = make([]Node, 0)
+	var children = make(map[string]Node)
 
 	// Fill cache
 	for _, object := range objects {
@@ -151,7 +151,6 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 		if o.ContentType == DirContentType && !FolderRegex.Match([]byte(o.Name)) {
 			dirs[fileName] = true
 			child = &Directory{
-				s:    d.s,
 				c:    d.c,
 				path: o.Name + "/",
 				name: fileName,
@@ -163,7 +162,6 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 			if !dirs[realName] {
 				dirs[realName] = true
 				child = &Directory{
-					s:    d.s,
 					c:    d.c,
 					path: o.Name,
 					name: realName,
@@ -174,7 +172,6 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 			obj := &Object{
 				path: o.Name,
 				name: fileName,
-				s:    d.s,
 				c:    d.c,
 				so:   &o,
 				p:    d,
@@ -194,7 +191,7 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 
 		if child != nil {
 			entries = append(entries, child.Export())
-			children = append(children, child)
+			children[child.Name()] = child
 		}
 	}
 
@@ -203,39 +200,33 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 		for o := range loC {
 			done++
 			entries = append(entries, o.Export())
-			children = append(children, o)
+			children[o.name] = o
 			if done == count {
-				close(loC)
 				break
 			}
 		}
 	}
 
-	EntryCache.Set(d.c.Name, d.path, children)
+	EntryCache.AddAll(d.c.Name, d.path, children)
 
 	return entries, nil
 }
 
 func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
-	var nodes []Node
-
-	if nodes = EntryCache.Get(d.c.Name, d.path); nodes == nil {
+	if !EntryCache.CheckGetAll(d.c.Name, d.path) {
 		d.ReadDirAll(ctx)
-		nodes = EntryCache.Get(d.c.Name, d.path)
 	}
 
 	// Find matching child
-	for _, item := range nodes {
-		if item.Name() == req.Name {
-			if n, ok := item.(*Container); ok {
-				return n, nil
-			}
-			if n, ok := item.(*Directory); ok {
-				return n, nil
-			}
-			if n, ok := item.(*Object); ok {
-				return n, nil
-			}
+	if item := EntryCache.Get(d.c.Name, d.path, req.Name); item != nil {
+		if n, ok := item.(*Container); ok {
+			return n, nil
+		}
+		if n, ok := item.(*Directory); ok {
+			return n, nil
+		}
+		if n, ok := item.(*Object); ok {
+			return n, nil
 		}
 	}
 
@@ -249,20 +240,21 @@ func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node,
 	)
 
 	// Create the file in swift
-	if err := d.s.ObjectPutBytes(d.c.Name, absPath, nil, DirContentType); err != nil {
+	if err := SwiftConnection.ObjectPutBytes(d.c.Name, absPath, nil, DirContentType); err != nil {
 		return nil, fuse.EIO
 	}
 
-	// Cache eviction
-	EntryCache.Delete(d.c.Name, d.path)
-
 	// Directory object
-	return &Directory{
+	node := &Directory{
 		name: req.Name,
 		path: absPath,
-		s:    d.s,
 		c:    d.c,
-	}, nil
+	}
+
+	// Cache eviction
+	EntryCache.Set(d.c.Name, d.path, req.Name, node)
+
+	return node, nil
 }
 
 func (d *Directory) Name() string {
@@ -277,13 +269,13 @@ func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 	}
 
 	// Delete from swift
-	err := d.s.ObjectDelete(d.c.Name, path)
+	err := SwiftConnection.ObjectDelete(d.c.Name, path)
 	if err != nil && err != swift.ObjectNotFound {
 		return err
 	}
 
 	// Cache eviction
-	EntryCache.Delete(d.c.Name, d.path)
+	EntryCache.Delete(d.c.Name, d.path, req.Name)
 
 	return nil
 }
@@ -295,15 +287,15 @@ func (d *Directory) Rename(ctx context.Context, req *fuse.RenameRequest, newDir 
 	}
 	// Swift move = copy + delete
 	if t, ok := newDir.(*Container); ok {
-		d.s.ObjectMove(d.c.Name, d.path+req.OldName, t.c.Name, t.path+req.NewName)
-		EntryCache.Delete(d.c.Name, d.path)
-		EntryCache.Delete(t.c.Name, t.path)
+		SwiftConnection.ObjectMove(d.c.Name, d.path+req.OldName, t.c.Name, t.path+req.NewName)
+		EntryCache.Delete(d.c.Name, d.path, req.OldName)
+		EntryCache.Set(t.c.Name, t.path, req.NewName, t)
 		return nil
 	}
 	if t, ok := newDir.(*Directory); ok {
-		d.s.ObjectMove(d.c.Name, d.path+req.OldName, t.c.Name, t.path+req.NewName)
-		EntryCache.Delete(d.c.Name, d.path)
-		EntryCache.Delete(t.c.Name, t.path)
+		SwiftConnection.ObjectMove(d.c.Name, d.path+req.OldName, t.c.Name, t.path+req.NewName)
+		EntryCache.Delete(d.c.Name, d.path, req.OldName)
+		EntryCache.Set(t.c.Name, t.path, req.NewName, t)
 		return nil
 	}
 	return nil

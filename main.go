@@ -43,6 +43,7 @@ func main() {
 
 	// Concurrency
 	flag.Uint64Var(&conf.MaxReaddirConcurrency, "max-readdir-concurrency", 20, "Overall concurrency factor when listing directories")
+	flag.UintVar(&conf.ReadAheadSize, "readahead-size", 131072, "Per file readahead size in bytes")
 
 	// Cache Options
 	flag.DurationVar(&cconf.Timeout, "cache-ttl", 1*time.Minute, "Cache timeout")
@@ -75,6 +76,7 @@ func main() {
 		mountpoint,
 		fuse.FSName("svfs"),
 		fuse.Subtype("svfs"),
+		fuse.MaxReadahead(uint32(conf.ReadAheadSize)),
 	)
 	if err != nil {
 		log.Fatal(err)

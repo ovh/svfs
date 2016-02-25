@@ -2,7 +2,6 @@ package svfs
 
 import (
 	"io"
-	"io/ioutil"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
@@ -11,55 +10,43 @@ import (
 )
 
 type ObjectHandle struct {
-	p *Directory
-	t *Object
-	r *swift.ObjectOpenFile
-	w *swift.ObjectCreateFile
+	t      *Object
+	w      *swift.ObjectCreateFile
+	rd     io.ReadCloser
+	buffer []byte
 }
 
 func (fh *ObjectHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
-	buf := make([]byte, req.Size)
-	n, err := fh.r.Read(buf)
-	if err != io.EOF {
-		return fuse.EIO
+	if len(fh.buffer) < req.Size {
+		fh.buffer = make([]byte, req.Size)
 	}
-	resp.Data = buf[:n]
+	buffer := make([]byte, req.Size)
+	io.ReadFull(fh.rd, buffer)
+	resp.Data = buffer
 	return nil
 }
 
-func (fh *ObjectHandle) ReadAll(ctx context.Context) ([]byte, error) {
-	data, err := ioutil.ReadAll(fh.r)
-	return data, err
-}
-
 func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) error {
-	if fh.r != nil {
-		fh.r.Close()
+	if fh.rd != nil {
+		defer fh.rd.Close()
 	}
 	if fh.w != nil {
-		fh.w.Close()
-	}
-	if fh.p != nil {
-		EntryCache.Delete(fh.p.c.Name, fh.p.path)
+		EntryCache.Set(fh.t.c.Name, fh.t.path, fh.t.name, fh.t)
+		defer fh.w.Close()
 	}
 	return nil
 }
 
 func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) error {
 	n, err := fh.w.Write(req.Data)
-	if req.Offset == 0 {
-		fh.t.so.Bytes = int64(n)
-	} else if req.Offset+int64(len(req.Data))+1 > fh.t.so.Bytes {
-		fh.t.so.Bytes = req.Offset + int64(len(req.Data)) + 1
-	}
+	fh.t.so.Bytes += int64(n)
 	resp.Size = n
 	return err
 }
 
 var (
-	_ fs.Handle          = (*ObjectHandle)(nil)
-	_ fs.HandleReleaser  = (*ObjectHandle)(nil)
-	_ fs.HandleReader    = (*ObjectHandle)(nil)
-	_ fs.HandleReadAller = (*ObjectHandle)(nil)
-	_ fs.HandleWriter    = (*ObjectHandle)(nil)
+	_ fs.Handle         = (*ObjectHandle)(nil)
+	_ fs.HandleReleaser = (*ObjectHandle)(nil)
+	_ fs.HandleReader   = (*ObjectHandle)(nil)
+	_ fs.HandleWriter   = (*ObjectHandle)(nil)
 )

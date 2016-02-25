@@ -40,11 +40,11 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 	var (
 		baseC = make(map[string]*swift.Container)
 		segC  = make(map[string]*swift.Container)
-		list  = make([]Node, 0)
+		list  = make(map[string]Node)
 	)
 
 	// Cache hit
-	if nodes := EntryCache.Get("", r.path); nodes != nil {
+	if nodes := EntryCache.GetAll("", r.path); nodes != nil {
 		for _, node := range nodes {
 			entries = append(entries, node.Export())
 		}
@@ -52,7 +52,7 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 	}
 
 	// Retrieve base container
-	cs, err := r.s.ContainersAll(nil)
+	cs, err := SwiftConnection.ContainersAll(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -78,36 +78,37 @@ func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error
 
 		child := Container{
 			Directory: &Directory{
-				s:    r.s,
 				c:    c,
 				name: name,
 			},
 			cs: segment,
 		}
 
-		list = append(list, &child)
+		list[name] = &child
 		entries = append(entries, child.Export())
 	}
 
-	EntryCache.Set("", r.path, list)
+	EntryCache.AddAll("", r.path, list)
 
 	return entries, nil
 }
 
 func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
-	var nodes []Node
-
 	// Fill cache if expired
-	if nodes = EntryCache.Get("", r.path); nodes == nil {
+	if !EntryCache.CheckGetAll("", r.path) {
 		r.ReadDirAll(ctx)
-		nodes = EntryCache.Get("", r.path)
 	}
 
-	for _, item := range nodes {
-		if item.Name() == req.Name {
-			if n, ok := item.(*Container); ok {
-				return n, nil
-			}
+	// Find matching child
+	if item := EntryCache.Get("", r.path, req.Name); item != nil {
+		if n, ok := item.(*Container); ok {
+			return n, nil
+		}
+		if n, ok := item.(*Directory); ok {
+			return n, nil
+		}
+		if n, ok := item.(*Object); ok {
+			return n, nil
 		}
 	}
 

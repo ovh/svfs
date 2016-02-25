@@ -8,33 +8,33 @@ import (
 	"github.com/ncw/swift"
 )
 
+var (
+	SwiftConnection *swift.Connection
+)
+
 // SVFS implements the Swift Virtual File System.
 type SVFS struct {
-	s           *swift.Connection
-	conf        *Config
-	concurrency uint64
+	conf *Config
 }
 
 type Config struct {
 	Container             string
 	ConnectTimeout        time.Duration
+	ReadAheadSize         uint
 	MaxReaddirConcurrency uint64
 }
 
 func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) error {
-	s.s = sc
 	s.conf = conf
-	s.s.ConnectTimeout = conf.ConnectTimeout
+	SwiftConnection = sc
+	SwiftConnection.ConnectTimeout = conf.ConnectTimeout
 	EntryCache = NewCache(cconf)
-	DirectoryLister = &DirLister{
-		c:           s.s,
-		concurrency: conf.MaxReaddirConcurrency,
-	}
+	DirectoryLister = &DirLister{concurrency: conf.MaxReaddirConcurrency}
 
 	// Authenticate if we don't have a token
 	// and storage URL
-	if !s.s.Authenticated() {
-		return s.s.Authenticate()
+	if !SwiftConnection.Authenticated() {
+		return SwiftConnection.Authenticate()
 	}
 
 	// Start directory lister
@@ -48,11 +48,11 @@ func (s *SVFS) Root() (fs.Node, error) {
 		// If a specific container is specified
 		// in mount options, find it and relevant
 		// segment container too if present.
-		baseC, _, err := s.s.Container(s.conf.Container)
+		baseC, _, err := SwiftConnection.Container(s.conf.Container)
 		if err != nil {
 			return nil, fuse.ENOENT
 		}
-		segC, _, err := s.s.Container(s.conf.Container + "_segments")
+		segC, _, err := SwiftConnection.Container(s.conf.Container + "_segments")
 		if err != nil && err != swift.ContainerNotFound {
 			return nil, fuse.EIO
 		}
@@ -60,7 +60,6 @@ func (s *SVFS) Root() (fs.Node, error) {
 		return &Container{
 			Directory: &Directory{
 				apex: true,
-				s:    s.s,
 				c:    &baseC,
 			},
 			cs: &segC,
@@ -69,7 +68,6 @@ func (s *SVFS) Root() (fs.Node, error) {
 	return &Root{
 		Directory: &Directory{
 			apex: true,
-			s:    s.s,
 		},
 	}, nil
 }

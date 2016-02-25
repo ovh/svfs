@@ -10,7 +10,6 @@ import (
 type Object struct {
 	name      string
 	path      string
-	s         *swift.Connection
 	so        *swift.Object
 	c         *swift.Container
 	cs        *swift.Container
@@ -35,21 +34,18 @@ func (o *Object) Export() fuse.Dirent {
 }
 
 func (o *Object) open(mode fuse.OpenFlags) (oh *ObjectHandle, err error) {
-	oh = &ObjectHandle{
-		p: o.p,
-		t: o,
-	}
+	oh = &ObjectHandle{t: o}
 
 	// Append mode is not supported
 	if mode&fuse.OpenAppend == fuse.OpenAppend {
 		return nil, fuse.ENOTSUP
 	}
 	if mode.IsReadOnly() {
-		oh.r, _, err = o.s.ObjectOpen(o.c.Name, o.so.Name, false, nil)
+		oh.rd, _, err = SwiftConnection.ObjectOpen(o.c.Name, o.so.Name, false, nil)
 		return oh, err
 	}
 	if mode.IsWriteOnly() {
-		oh.w, err = o.s.ObjectCreate(o.c.Name, o.so.Name, false, "", "application/octet-sream", nil)
+		oh.w, err = SwiftConnection.ObjectCreate(o.c.Name, o.so.Name, false, "", "application/octet-sream", nil)
 		return oh, err
 	}
 
