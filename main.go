@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/pprof"
 	"time"
 
 	"github.com/ncw/swift"
@@ -17,17 +18,15 @@ import (
 
 func main() {
 	var (
-		debug bool
-		fs    *svfs.SVFS
-		sc    = swift.Connection{}
-		srv   *fusefs.Server
-		conf  = svfs.Config{}
-		cconf = svfs.CacheConfig{}
+		debug   bool
+		fs      *svfs.SVFS
+		sc      = swift.Connection{}
+		srv     *fusefs.Server
+		conf    = svfs.Config{}
+		cconf   = svfs.CacheConfig{}
+		cpuProf string
+		memProf string
 	)
-
-	// Logger
-	log.SetOutput(os.Stdout)
-	flag.BoolVar(&debug, "debug", false, "Enable fuse debug log")
 
 	// Swift options
 	flag.StringVar(&sc.AuthUrl, "os-auth-url", "https://auth.cloud.ovh.net/v2.0", "Authentication URL")
@@ -50,6 +49,12 @@ func main() {
 	flag.Int64Var(&cconf.MaxEntries, "cache-max-entries", -1, "Maximum overall entries allowed in cache")
 	flag.Int64Var(&cconf.MaxAccess, "cache-max-access", -1, "Maximum access count to cached entries")
 
+	// Debug and profiling
+	log.SetOutput(os.Stdout)
+	flag.BoolVar(&debug, "debug", false, "Enable fuse debug log")
+	flag.StringVar(&cpuProf, "profile-cpu", "", "Write cpu profile to this file")
+	flag.StringVar(&memProf, "profile-ram", "", "Write memory profile to this file")
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage : %s [OPTIONS] MOUNTPOINT\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Available options :\n")
@@ -62,6 +67,16 @@ func main() {
 		fuse.Debug = func(msg interface{}) {
 			log.Printf("FUSE: %s\n", msg)
 		}
+	}
+
+	// CPU profiling
+	if cpuProf != "" {
+		f, err := os.Create(cpuProf)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
 	}
 
 	// Mountpoint is mandatory
@@ -105,6 +120,18 @@ func main() {
 
 	// Check for mount errors
 	<-c.Ready
+
+	// Memory profiling
+	if memProf != "" {
+		f, err := os.Create(memProf)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.WriteHeapProfile(f)
+		f.Close()
+		return
+	}
+
 	if err = c.MountError; err != nil {
 		goto Err
 	}
