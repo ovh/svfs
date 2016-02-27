@@ -31,14 +31,14 @@ func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) erro
 	EntryCache = NewCache(cconf)
 	DirectoryLister = &DirLister{concurrency: conf.MaxReaddirConcurrency}
 
+	// Start directory lister
+	DirectoryLister.Start()
+
 	// Authenticate if we don't have a token
 	// and storage URL
 	if !SwiftConnection.Authenticated() {
 		return SwiftConnection.Authenticate()
 	}
-
-	// Start directory lister
-	DirectoryLister.Start()
 
 	return nil
 }
