@@ -1,25 +1,30 @@
 package svfs
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/ncw/swift"
+	"github.com/xlucas/swift"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"golang.org/x/net/context"
 )
 
+const (
+	DirContentType = "application/directory"
+	ObjContentType = "application/octet-stream"
+)
+
 var (
-	FolderRegex     = regexp.MustCompile("^.+/$")
-	SubdirRegex     = regexp.MustCompile(".*/.*$")
-	DirContentType  = "application/directory"
-	ObjContentType  = "application/octet-stream"
-	EntryCache      = new(Cache)
-	DirectoryLister = new(DirLister)
+	FolderRegex      = regexp.MustCompile("^.+/$")
+	SubdirRegex      = regexp.MustCompile(".*/.*$")
+	SegmentPathRegex = regexp.MustCompile("^([^/]+)/(.*)$")
+	DirectoryCache   = new(Cache)
+	DirectoryLister  = new(DirLister)
 )
 
 type DirLister struct {
@@ -59,6 +64,7 @@ type Directory struct {
 	name string
 	path string
 	c    *swift.Container
+	cs   *swift.Container
 }
 
 func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
@@ -91,6 +97,7 @@ func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *f
 		path: path,
 		so:   &obj,
 		c:    d.c,
+		cs:   d.cs,
 	}
 
 	// Get object handler handler
@@ -100,7 +107,7 @@ func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *f
 	}
 
 	// Cache it
-	EntryCache.Set(d.c.Name, d.path, req.Name, node)
+	DirectoryCache.Set(d.c.Name, d.path, req.Name, node)
 
 	return node, h, nil
 }
@@ -112,21 +119,21 @@ func (d *Directory) Export() fuse.Dirent {
 	}
 }
 
-func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error) {
+func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err error) {
 	var (
-		dirs  = make(map[string]bool)
-		loC   = make(chan *Object, DirectoryLister.concurrency)
-		count = 0
+		dirs         = make(map[string]bool)
+		largeObjects = make(chan *Object, DirectoryLister.concurrency)
+		count        = 0
 	)
 
-	defer close(loC)
+	defer close(largeObjects)
 
 	// Cache check
-	if nodes := EntryCache.GetAll(d.c.Name, d.path); nodes != nil {
+	if nodes := DirectoryCache.GetAll(d.c.Name, d.path); nodes != nil {
 		for _, node := range nodes {
-			entries = append(entries, node.Export())
+			direntries = append(direntries, node.Export())
 		}
-		return entries, nil
+		return direntries, nil
 	}
 
 	// Fetch objects
@@ -147,11 +154,13 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 			o        = object
 			fileName = strings.TrimPrefix(o.Name, d.path)
 		)
+
 		// This is a directory
 		if o.ContentType == DirContentType && !FolderRegex.Match([]byte(o.Name)) {
 			dirs[fileName] = true
 			child = &Directory{
 				c:    d.c,
+				cs:   d.cs,
 				path: o.Name + "/",
 				name: fileName,
 			}
@@ -163,6 +172,7 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 				dirs[realName] = true
 				child = &Directory{
 					c:    d.c,
+					cs:   d.cs,
 					path: o.Name,
 					name: realName,
 				}
@@ -173,33 +183,37 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 				path: o.Name,
 				name: fileName,
 				c:    d.c,
+				cs:   d.cs,
 				so:   &o,
 				p:    d,
 			}
 
+			// Large object
 			if o.Bytes == 0 &&
 				!o.PseudoDirectory &&
 				o.ContentType != DirContentType {
-				DirectoryLister.AddTask(obj, loC)
+				obj.segmented = true
+				DirectoryLister.AddTask(obj, largeObjects)
 				child = nil
 				count++
 			} else {
+				//Standard object
 				child = obj
 			}
 
 		}
 
 		if child != nil {
-			entries = append(entries, child.Export())
+			direntries = append(direntries, child.Export())
 			children[child.Name()] = child
 		}
 	}
 
 	if count > 0 {
 		done := 0
-		for o := range loC {
+		for o := range largeObjects {
 			done++
-			entries = append(entries, o.Export())
+			direntries = append(direntries, o.Export())
 			children[o.name] = o
 			if done == count {
 				break
@@ -207,18 +221,18 @@ func (d *Directory) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err 
 		}
 	}
 
-	EntryCache.AddAll(d.c.Name, d.path, children)
+	DirectoryCache.AddAll(d.c.Name, d.path, children)
 
-	return entries, nil
+	return direntries, nil
 }
 
 func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
-	if !EntryCache.CheckGetAll(d.c.Name, d.path) {
+	if !DirectoryCache.Peek(d.c.Name, d.path) {
 		d.ReadDirAll(ctx)
 	}
 
 	// Find matching child
-	if item := EntryCache.Get(d.c.Name, d.path, req.Name); item != nil {
+	if item := DirectoryCache.Get(d.c.Name, d.path, req.Name); item != nil {
 		if n, ok := item.(*Container); ok {
 			return n, nil
 		}
@@ -249,10 +263,11 @@ func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node,
 		name: req.Name,
 		path: absPath,
 		c:    d.c,
+		cs:   d.cs,
 	}
 
 	// Cache eviction
-	EntryCache.Set(d.c.Name, d.path, req.Name, node)
+	DirectoryCache.Set(d.c.Name, d.path, req.Name, node)
 
 	return node, nil
 }
@@ -268,37 +283,98 @@ func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 		path += "/"
 	}
 
-	// Delete from swift
-	err := SwiftConnection.ObjectDelete(d.c.Name, path)
-	if err != nil && err != swift.ObjectNotFound {
+	// Get the old node from the cache
+	node := DirectoryCache.Get(d.c.Name, d.path, req.Name)
+
+	if object, ok := node.(*Object); ok {
+		// Segmented object removal. We need to find all segments
+		// using the manifest segment prefix then bulk delete
+		// them and remove the manifest enventually.
+		if object.segmented {
+			_, h, err := SwiftConnection.Object(d.c.Name, path)
+			if err != nil {
+				return err
+			}
+
+			if !SegmentPathRegex.Match([]byte(h[ManifestHeader])) {
+				return fmt.Errorf("Invalid segment path for manifest %s", req.Name)
+			}
+
+			deleteSegments(d.cs.Name, h[ManifestHeader])
+		}
+	} else {
+		return fuse.ENOTSUP
+	}
+
+	// Delete requested object/manifest from swift
+	SwiftConnection.ObjectDelete(d.c.Name, path)
+
+	// Cache eviction
+	DirectoryCache.Delete(d.c.Name, d.path, req.Name)
+
+	return nil
+}
+
+func (d *Directory) move(oldContainer, oldPath, oldName, newContainer, newPath, newName string) error {
+	// Get the old node from the cache
+	oldNode := DirectoryCache.Get(d.c.Name, d.path, oldName)
+
+	if oldObject, ok := oldNode.(*Object); ok {
+		// Move a manifest, not the aggregated result of its segments
+		if oldObject.segmented {
+			return d.moveManifest(oldContainer, oldPath, oldName, newContainer, newPath, newName, oldObject)
+		}
+		// Move a standard object
+		if !oldObject.segmented {
+			return d.moveObject(oldContainer, oldPath, oldName, newContainer, newPath, newName, oldObject)
+		}
+	}
+
+	return nil
+}
+
+func (d *Directory) moveObject(oldContainer, oldPath, oldName, newContainer, newPath, newName string, o *Object) error {
+	err := SwiftConnection.ObjectMove(oldContainer, oldPath+oldName, newContainer, newPath+newName)
+	if err != nil {
 		return err
 	}
 
-	// Cache eviction
-	EntryCache.Delete(d.c.Name, d.path, req.Name)
+	o.name = newName
+	o.path = newPath + newName
+
+	DirectoryCache.Delete(oldContainer, oldPath, oldName)
+	DirectoryCache.Set(newContainer, newPath, newName, o)
+
+	return nil
+}
+
+func (d *Directory) moveManifest(oldContainer, oldPath, oldName, newContainer, newPath, newName string, o *Object) error {
+	_, err := SwiftConnection.ManifestCopy(oldContainer, oldPath+oldName, newContainer, newPath+newName, nil)
+	if err != nil {
+		return err
+	}
+	err = SwiftConnection.ObjectDelete(oldContainer, oldPath+oldName)
+	if err != nil {
+		return err
+	}
+
+	o.name = newName
+	o.path = newPath + newName
+
+	DirectoryCache.Delete(oldContainer, oldPath, oldName)
+	DirectoryCache.Set(newContainer, newPath, newName, o)
 
 	return nil
 }
 
 func (d *Directory) Rename(ctx context.Context, req *fuse.RenameRequest, newDir fs.Node) error {
-	// Not supported
-	if _, ok := newDir.(*Root); ok {
-		return fuse.ENOTSUP
-	}
-	// Swift move = copy + delete
 	if t, ok := newDir.(*Container); ok {
-		SwiftConnection.ObjectMove(d.c.Name, d.path+req.OldName, t.c.Name, t.path+req.NewName)
-		EntryCache.Delete(d.c.Name, d.path, req.OldName)
-		EntryCache.Set(t.c.Name, t.path, req.NewName, t)
-		return nil
+		return d.move(d.c.Name, d.path, req.OldName, t.c.Name, t.path, req.NewName)
 	}
 	if t, ok := newDir.(*Directory); ok {
-		SwiftConnection.ObjectMove(d.c.Name, d.path+req.OldName, t.c.Name, t.path+req.NewName)
-		EntryCache.Delete(d.c.Name, d.path, req.OldName)
-		EntryCache.Set(t.c.Name, t.path, req.NewName, t)
-		return nil
+		return d.move(d.c.Name, d.path, req.OldName, t.c.Name, t.path, req.NewName)
 	}
-	return nil
+	return fuse.ENOTSUP
 }
 
 var (

@@ -3,8 +3,16 @@ package svfs
 import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
-	"github.com/ncw/swift"
+	"github.com/xlucas/swift"
 	"golang.org/x/net/context"
+)
+
+const (
+	ManifestHeader = "X-Object-Manifest"
+)
+
+var (
+	SegmentSize uint64
 )
 
 type Object struct {
@@ -34,7 +42,7 @@ func (o *Object) Export() fuse.Dirent {
 }
 
 func (o *Object) open(mode fuse.OpenFlags) (oh *ObjectHandle, err error) {
-	oh = &ObjectHandle{t: o}
+	oh = &ObjectHandle{target: o}
 
 	// Append mode is not supported
 	if mode&fuse.OpenAppend == fuse.OpenAppend {
@@ -45,7 +53,15 @@ func (o *Object) open(mode fuse.OpenFlags) (oh *ObjectHandle, err error) {
 		return oh, err
 	}
 	if mode.IsWriteOnly() {
-		oh.w, err = SwiftConnection.ObjectCreate(o.c.Name, o.so.Name, false, "", "application/octet-sream", nil)
+		oh.writing = true
+
+		// Remove segments if the previous file was a manifest
+		_, h, err := SwiftConnection.Object(o.c.Name, o.so.Name)
+		if err != swift.ObjectNotFound {
+			if SegmentPathRegex.Match([]byte(h[ManifestHeader])) {
+				deleteSegments(o.cs.Name, h[ManifestHeader])
+			}
+		}
 		return oh, err
 	}
 
@@ -53,6 +69,7 @@ func (o *Object) open(mode fuse.OpenFlags) (oh *ObjectHandle, err error) {
 }
 
 func (o *Object) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+	resp.Flags |= fuse.OpenNonSeekable
 	return o.open(req.Flags)
 }
 

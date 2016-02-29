@@ -3,13 +3,11 @@ package svfs
 import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
-	"github.com/ncw/swift"
 	"golang.org/x/net/context"
 )
 
 type Container struct {
 	*Directory
-	cs *swift.Container
 }
 
 func (c *Container) Attr(ctx context.Context, a *fuse.Attr) error {

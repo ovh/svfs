@@ -3,9 +3,8 @@ package svfs
 import (
 	"time"
 
-	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
-	"github.com/ncw/swift"
+	"github.com/xlucas/swift"
 )
 
 var (
@@ -21,21 +20,23 @@ type Config struct {
 	Container             string
 	ConnectTimeout        time.Duration
 	ReadAheadSize         uint
+	SegmentSizeMB         uint64
 	MaxReaddirConcurrency uint64
+	MaxUploadConcurrency  uint64
 }
 
 func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) error {
 	s.conf = conf
 	SwiftConnection = sc
-	SwiftConnection.ConnectTimeout = conf.ConnectTimeout
-	EntryCache = NewCache(cconf)
+	DirectoryCache = NewCache(cconf)
 	DirectoryLister = &DirLister{concurrency: conf.MaxReaddirConcurrency}
+	SwiftConnection.ConnectTimeout = conf.ConnectTimeout
+	SegmentSize = conf.SegmentSizeMB * (1 << 20)
 
 	// Start directory lister
 	DirectoryLister.Start()
 
-	// Authenticate if we don't have a token
-	// and storage URL
+	// Authenticate if we don't have a token and storage URL
 	if !SwiftConnection.Authenticated() {
 		return SwiftConnection.Authenticate()
 	}
@@ -44,27 +45,37 @@ func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) erro
 }
 
 func (s *SVFS) Root() (fs.Node, error) {
+	// Mount a specific container
 	if s.conf.Container != "" {
-		// If a specific container is specified
-		// in mount options, find it and relevant
-		// segment container too if present.
-		baseC, _, err := SwiftConnection.Container(s.conf.Container)
+		baseContainer, _, err := SwiftConnection.Container(s.conf.Container)
 		if err != nil {
-			return nil, fuse.ENOENT
+			return nil, err
 		}
-		segC, _, err := SwiftConnection.Container(s.conf.Container + "_segments")
+
+		// Find segment container too
+		segmentContainerName := s.conf.Container + SegmentContainerSuffix
+		segmentContainer, _, err := SwiftConnection.Container(segmentContainerName)
+
+		// Create it if missing
+		if err == swift.ContainerNotFound {
+			var container *swift.Container
+			container, err = createContainer(segmentContainerName)
+			segmentContainer = *container
+		}
 		if err != nil && err != swift.ContainerNotFound {
-			return nil, fuse.EIO
+			return nil, err
 		}
 
 		return &Container{
 			Directory: &Directory{
 				apex: true,
-				c:    &baseC,
+				c:    &baseContainer,
+				cs:   &segmentContainer,
 			},
-			cs: &segC,
 		}, nil
 	}
+
+	// Mount all containers within an account
 	return &Root{
 		Directory: &Directory{
 			apex: true,

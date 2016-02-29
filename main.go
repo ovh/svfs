@@ -9,8 +9,8 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/ncw/swift"
 	"github.com/xlucas/svfs/svfs"
+	"github.com/xlucas/swift"
 
 	fuse "bazil.org/fuse"
 	fusefs "bazil.org/fuse/fs"
@@ -39,8 +39,9 @@ func main() {
 	flag.StringVar(&sc.Tenant, "os-tenant-name", "", "Tenant name")
 	flag.IntVar(&sc.AuthVersion, "os-auth-version", 0, "Authentication version, 0 = auto")
 	flag.DurationVar(&conf.ConnectTimeout, "os-connect-timeout", 5*time.Minute, "Swift connection timeout")
+	flag.Uint64Var(&conf.SegmentSizeMB, "os-segment-size", 256, "Swift segment size in MB")
 
-	// Concurrency
+	// Prefetch
 	flag.Uint64Var(&conf.MaxReaddirConcurrency, "max-readdir-concurrency", 20, "Overall concurrency factor when listing directories")
 	flag.UintVar(&conf.ReadAheadSize, "readahead-size", 131072, "Per file readahead size in bytes")
 
@@ -91,6 +92,7 @@ func main() {
 		mountpoint,
 		fuse.FSName("svfs"),
 		fuse.Subtype("svfs"),
+		fuse.AllowOther(),
 		fuse.MaxReadahead(uint32(conf.ReadAheadSize)),
 	)
 	if err != nil {

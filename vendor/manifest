@@ -20,6 +20,12 @@
 			"branch": "master"
 		},
 		{
+			"importpath": "github.com/xlucas/swift",
+			"repository": "https://github.com/xlucas/swift",
+			"revision": "8079d1dca7a841f0ad73c23e8225b0b2c1f8108e",
+			"branch": "master"
+		},
+		{
 			"importpath": "golang.org/x/net/context",
 			"repository": "https://go.googlesource.com/net",
 			"revision": "8968c61983e8f51a91b8c0ef25bf739278c89634",

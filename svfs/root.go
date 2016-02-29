@@ -9,7 +9,11 @@ import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 
-	"github.com/ncw/swift"
+	"github.com/xlucas/swift"
+)
+
+const (
+	SegmentContainerSuffix = "_segments"
 )
 
 var SegmentRegex = regexp.MustCompile("^.+_segments$")
@@ -19,7 +23,6 @@ type Root struct {
 }
 
 func (r *Root) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
-	// TODO : implement container creation
 	return nil, nil, fuse.ENOTSUP
 }
 
@@ -28,7 +31,6 @@ func (r *Root) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, erro
 }
 
 func (r *Root) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
-	// TODO : implement container removal
 	return fuse.ENOTSUP
 }
 
@@ -36,71 +38,76 @@ func (r *Root) Rename(ctx context.Context, req *fuse.RenameRequest, newDir fs.No
 	return fuse.ENOTSUP
 }
 
-func (r *Root) ReadDirAll(ctx context.Context) (entries []fuse.Dirent, err error) {
+func (r *Root) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err error) {
 	var (
-		baseC = make(map[string]*swift.Container)
-		segC  = make(map[string]*swift.Container)
-		list  = make(map[string]Node)
+		baseContainers    = make(map[string]*swift.Container)
+		segmentContainers = make(map[string]*swift.Container)
+		children          = make(map[string]Node)
 	)
 
 	// Cache hit
-	if nodes := EntryCache.GetAll("", r.path); nodes != nil {
+	if nodes := DirectoryCache.GetAll("", r.path); nodes != nil {
 		for _, node := range nodes {
-			entries = append(entries, node.Export())
+			direntries = append(direntries, node.Export())
 		}
-		return entries, nil
+		return direntries, nil
 	}
 
-	// Retrieve base container
+	// Retrieve all containers
 	cs, err := SwiftConnection.ContainersAll(nil)
 	if err != nil {
 		return nil, err
 	}
 
-	// Find segments
-	for _, container := range cs {
-		c := container
-		name := container.Name
-		if !SegmentRegex.Match([]byte(name)) {
-			baseC[name] = &c
+	// Sort base and segment containers
+	for _, segmentContainer := range cs {
+		s := segmentContainer
+		if !SegmentRegex.Match([]byte(s.Name)) {
+			baseContainers[s.Name] = &s
 			continue
 		}
-		if SegmentRegex.Match([]byte(name)) {
-			segC[strings.TrimSuffix(name, "_segments")] = &c
+		if SegmentRegex.Match([]byte(s.Name)) {
+			segmentContainers[strings.TrimSuffix(s.Name, SegmentContainerSuffix)] = &s
 			continue
 		}
 	}
 
-	// Register children
-	for name, container := range baseC {
-		c := container
-		segment := segC[name]
+	for _, baseContainer := range baseContainers {
+		c := baseContainer
+		// Create segment container if missing
+		if segmentContainers[c.Name] == nil {
+			segmentContainers[c.Name], err = createContainer(c.Name + SegmentContainerSuffix)
+			if err != nil {
+				return nil, err
+			}
+		}
 
+		// Register direntries and cache entries
 		child := Container{
 			Directory: &Directory{
 				c:    c,
-				name: name,
+				cs:   segmentContainers[c.Name],
+				name: c.Name,
 			},
-			cs: segment,
 		}
 
-		list[name] = &child
-		entries = append(entries, child.Export())
+		children[c.Name] = &child
+		direntries = append(direntries, child.Export())
 	}
 
-	EntryCache.AddAll("", r.path, list)
+	DirectoryCache.AddAll("", r.path, children)
 
-	return entries, nil
+	return direntries, nil
 }
 
 func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
 	// Fill cache if expired
-	if !EntryCache.CheckGetAll("", r.path) {
+	if !DirectoryCache.Peek("", r.path) {
 		r.ReadDirAll(ctx)
 	}
 
 	// Find matching child
-	if item := EntryCache.Get("", r.path, req.Name); item != nil {
+	if item := DirectoryCache.Get("", r.path, req.Name); item != nil {
 		if n, ok := item.(*Container); ok {
 			return n, nil
 		}

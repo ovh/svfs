@@ -7,7 +7,7 @@ import (
 
 type Cache struct {
 	config    *CacheConfig
-	content   map[string]*CacheEntry
+	content   map[string]*CacheValue
 	nodeCount uint64
 }
 
@@ -17,8 +17,8 @@ type CacheConfig struct {
 	MaxAccess  int64
 }
 
-type CacheEntry struct {
-	cachingDate time.Time
+type CacheValue struct {
+	date        time.Time
 	accessCount uint64
 	temporary   bool
 	nodes       map[string]Node
@@ -27,7 +27,7 @@ type CacheEntry struct {
 func NewCache(cconf *CacheConfig) *Cache {
 	return &Cache{
 		config:  cconf,
-		content: make(map[string]*CacheEntry),
+		content: make(map[string]*CacheValue),
 	}
 }
 
@@ -36,9 +36,9 @@ func (c *Cache) key(container, path string) string {
 }
 
 func (c *Cache) AddAll(container, path string, nodes map[string]Node) {
-	entry := &CacheEntry{
-		cachingDate: time.Now(),
-		nodes:       nodes,
+	entry := &CacheValue{
+		date:  time.Now(),
+		nodes: nodes,
 	}
 
 	if !(c.config.MaxEntries < 0) &&
@@ -52,13 +52,29 @@ func (c *Cache) AddAll(container, path string, nodes map[string]Node) {
 	c.content[c.key(container, path)] = entry
 }
 
+func (c *Cache) Delete(container, path, name string) {
+	v, ok := c.content[c.key(container, path)]
+	if !ok {
+		return
+	}
+	delete(v.nodes, name)
+}
+
 func (c *Cache) DeleteAll(container, path string) {
-	k, found := c.content[c.key(container, path)]
+	v, found := c.content[c.key(container, path)]
 	if found &&
-		!k.temporary {
+		!v.temporary {
 		c.nodeCount -= uint64(len(c.content[c.key(container, path)].nodes))
 		delete(c.content, c.key(container, path))
 	}
+}
+
+func (c *Cache) Get(container, path, name string) Node {
+	v, ok := c.content[c.key(container, path)]
+	if !ok {
+		return nil
+	}
+	return v.nodes[name]
 }
 
 func (c *Cache) GetAll(container, path string) map[string]Node {
@@ -73,7 +89,7 @@ func (c *Cache) GetAll(container, path string) map[string]Node {
 	v.accessCount++
 
 	// Found but expired
-	if time.Now().After(v.cachingDate.Add(c.config.Timeout)) {
+	if time.Now().After(v.date.Add(c.config.Timeout)) {
 		defer c.DeleteAll(container, path)
 		return nil
 	}
@@ -86,7 +102,7 @@ func (c *Cache) GetAll(container, path string) map[string]Node {
 	return v.nodes
 }
 
-func (c *Cache) CheckGetAll(container, path string) bool {
+func (c *Cache) Peek(container, path string) bool {
 	v, found := c.content[c.key(container, path)]
 
 	// Not found
@@ -95,41 +111,17 @@ func (c *Cache) CheckGetAll(container, path string) bool {
 	}
 
 	// Found but expired
-	if time.Now().After(v.cachingDate.Add(c.config.Timeout)) {
+	if time.Now().After(v.date.Add(c.config.Timeout)) {
 		return false
 	}
 
 	return true
 }
 
-func (c *Cache) Delete(container, path, name string) {
-	h, ok := c.content[c.key(container, path)]
-
-	if !ok {
-		return
-	}
-
-	delete(h.nodes, name)
-}
-
-func (c *Cache) Get(container, path, name string) Node {
-	h, ok := c.content[c.key(container, path)]
-
-	if !ok {
-		return nil
-	}
-
-	v, _ := h.nodes[name]
-
-	return v
-}
-
 func (c *Cache) Set(container, path, name string, node Node) {
-	h, ok := c.content[c.key(container, path)]
-
+	v, ok := c.content[c.key(container, path)]
 	if !ok {
 		return
 	}
-
-	h.nodes[name] = node
+	v.nodes[name] = node
 }
