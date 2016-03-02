@@ -330,7 +330,7 @@ func (d *Directory) move(oldContainer, oldPath, oldName, newContainer, newPath, 
 		}
 	}
 
-	return nil
+	return fuse.ENOTSUP
 }
 
 func (d *Directory) moveObject(oldContainer, oldPath, oldName, newContainer, newPath, newName string, o *Object) error {
