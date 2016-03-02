@@ -21,6 +21,7 @@ type CacheValue struct {
 	date        time.Time
 	accessCount uint64
 	temporary   bool
+	node        Node
 	nodes       map[string]Node
 }
 
@@ -35,9 +36,10 @@ func (c *Cache) key(container, path string) string {
 	return fmt.Sprintf("%s:%s", container, path)
 }
 
-func (c *Cache) AddAll(container, path string, nodes map[string]Node) {
+func (c *Cache) AddAll(container, path string, node Node, nodes map[string]Node) {
 	entry := &CacheValue{
 		date:  time.Now(),
+		node:  node,
 		nodes: nodes,
 	}
 
@@ -77,12 +79,12 @@ func (c *Cache) Get(container, path, name string) Node {
 	return v.nodes[name]
 }
 
-func (c *Cache) GetAll(container, path string) map[string]Node {
+func (c *Cache) GetAll(container, path string) (Node, map[string]Node) {
 	v, found := c.content[c.key(container, path)]
 
 	// Not found
 	if !found {
-		return nil
+		return nil, nil
 	}
 
 	// Increase access counter
@@ -91,7 +93,7 @@ func (c *Cache) GetAll(container, path string) map[string]Node {
 	// Found but expired
 	if time.Now().After(v.date.Add(c.config.Timeout)) {
 		defer c.DeleteAll(container, path)
-		return nil
+		return nil, nil
 	}
 
 	if v.temporary ||
@@ -99,23 +101,23 @@ func (c *Cache) GetAll(container, path string) map[string]Node {
 		defer c.DeleteAll(container, path)
 	}
 
-	return v.nodes
+	return v.node, v.nodes
 }
 
-func (c *Cache) Peek(container, path string) bool {
+func (c *Cache) Peek(container, path string) (Node, bool) {
 	v, found := c.content[c.key(container, path)]
 
 	// Not found
 	if !found {
-		return false
+		return nil, false
 	}
 
 	// Found but expired
 	if time.Now().After(v.date.Add(c.config.Timeout)) {
-		return false
+		return nil, false
 	}
 
-	return true
+	return v.node, true
 }
 
 func (c *Cache) Set(container, path, name string, node Node) {

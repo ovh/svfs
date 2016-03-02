@@ -57,7 +57,7 @@ Available options are :
 ### Large objects
 
 If an Object has a size greater than 5 GB, it requires segmentation either as Dynamic Large Object or Static Large Object, in order to be stored in Swift.
-SVFS only supports DLO and requires segments to be stored within a container honoring the naming convention `<container_name>_segments` where `<container_name>` is the name of the container intended to store the manifest file.
+SVFS only supports DLO and requires segments to be stored within a container honoring the naming convention `<container_name>_segments` where `<container_name>` is the name of the container intended to store the manifest file. When uploading a large file this container will be created if missing.
 
 Segments size can be adjusted with option `--os-segment-size`, it defaults to 256MB.
 

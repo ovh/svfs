@@ -43,6 +43,9 @@ func (dl *DirLister) Start() {
 		go func() {
 			for t := range dl.taskChan {
 				_, h, _ := SwiftConnection.Object(t.o.c.Name, t.o.so.Name)
+				if SegmentPathRegex.Match([]byte(h[ManifestHeader])) {
+					t.o.segmented = true
+				}
 				t.o.so.Bytes, _ = strconv.ParseInt(h["Content-Length"], 10, 64)
 				t.rc <- t.o
 			}
@@ -129,7 +132,7 @@ func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, e
 	defer close(largeObjects)
 
 	// Cache check
-	if nodes := DirectoryCache.GetAll(d.c.Name, d.path); nodes != nil {
+	if _, nodes := DirectoryCache.GetAll(d.c.Name, d.path); nodes != nil {
 		for _, node := range nodes {
 			direntries = append(direntries, node.Export())
 		}
@@ -192,7 +195,6 @@ func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, e
 			if o.Bytes == 0 &&
 				!o.PseudoDirectory &&
 				o.ContentType != DirContentType {
-				obj.segmented = true
 				DirectoryLister.AddTask(obj, largeObjects)
 				child = nil
 				count++
@@ -221,13 +223,13 @@ func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, e
 		}
 	}
 
-	DirectoryCache.AddAll(d.c.Name, d.path, children)
+	DirectoryCache.AddAll(d.c.Name, d.path, d, children)
 
 	return direntries, nil
 }
 
 func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
-	if !DirectoryCache.Peek(d.c.Name, d.path) {
+	if _, found := DirectoryCache.Peek(d.c.Name, d.path); !found {
 		d.ReadDirAll(ctx)
 	}
 
@@ -281,36 +283,38 @@ func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 
 	if req.Dir {
 		path += "/"
-	}
-
-	// Get the old node from the cache
-	node := DirectoryCache.Get(d.c.Name, d.path, req.Name)
-
-	if object, ok := node.(*Object); ok {
-		// Segmented object removal. We need to find all segments
-		// using the manifest segment prefix then bulk delete
-		// them and remove the manifest enventually.
-		if object.segmented {
-			_, h, err := SwiftConnection.Object(d.c.Name, path)
-			if err != nil {
-				return err
-			}
-
-			if !SegmentPathRegex.Match([]byte(h[ManifestHeader])) {
-				return fmt.Errorf("Invalid segment path for manifest %s", req.Name)
-			}
-
-			deleteSegments(d.cs.Name, h[ManifestHeader])
+		node, found := DirectoryCache.Peek(d.c.Name, d.path)
+		if !found {
+			return fuse.ENOTSUP
 		}
-	} else {
-		return fuse.ENOTSUP
+		if _, ok := node.(*Directory); !ok {
+			return fuse.ENOTSUP
+		}
+		SwiftConnection.ObjectDelete(d.c.Name, path)
+		DirectoryCache.DeleteAll(d.c.Name, d.path)
 	}
 
-	// Delete requested object/manifest from swift
-	SwiftConnection.ObjectDelete(d.c.Name, path)
-
-	// Cache eviction
-	DirectoryCache.Delete(d.c.Name, d.path, req.Name)
+	if !req.Dir {
+		// Get the old node from the cache
+		node := DirectoryCache.Get(d.c.Name, d.path, req.Name)
+		if object, ok := node.(*Object); ok {
+			// Segmented object removal. We need to find all segments
+			// using the manifest segment prefix then bulk delete
+			// them and remove the manifest enventually.
+			if object.segmented {
+				_, h, err := SwiftConnection.Object(d.c.Name, path)
+				if err != nil {
+					return err
+				}
+				if !SegmentPathRegex.Match([]byte(h[ManifestHeader])) {
+					return fmt.Errorf("Invalid segment path for manifest %s", req.Name)
+				}
+				deleteSegments(d.cs.Name, h[ManifestHeader])
+			}
+		}
+		SwiftConnection.ObjectDelete(d.c.Name, path)
+		DirectoryCache.Delete(d.c.Name, d.path, req.Name)
+	}
 
 	return nil
 }

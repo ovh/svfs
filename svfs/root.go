@@ -46,7 +46,7 @@ func (r *Root) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err er
 	)
 
 	// Cache hit
-	if nodes := DirectoryCache.GetAll("", r.path); nodes != nil {
+	if _, nodes := DirectoryCache.GetAll("", r.path); nodes != nil {
 		for _, node := range nodes {
 			direntries = append(direntries, node.Export())
 		}
@@ -95,14 +95,14 @@ func (r *Root) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err er
 		direntries = append(direntries, child.Export())
 	}
 
-	DirectoryCache.AddAll("", r.path, children)
+	DirectoryCache.AddAll("", r.path, r, children)
 
 	return direntries, nil
 }
 
 func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
 	// Fill cache if expired
-	if !DirectoryCache.Peek("", r.path) {
+	if _, found := DirectoryCache.Peek("", r.path); !found {
 		r.ReadDirAll(ctx)
 	}
 
