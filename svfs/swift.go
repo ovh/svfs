@@ -9,6 +9,11 @@ import (
 	"github.com/xlucas/swift"
 )
 
+func segmentPath(segmentPrefix string, segmentID *uint) string {
+	*segmentID++
+	return fmt.Sprintf("%s/%08d", segmentPrefix, *segmentID)
+}
+
 func createContainer(name string) (*swift.Container, error) {
 	err := SwiftConnection.ContainerCreate(name, nil)
 	if err != nil {
@@ -22,9 +27,8 @@ func createContainer(name string) (*swift.Container, error) {
 }
 
 func createSegment(container, segmentPrefix string, segmentID *uint, uploaded *uint64) (fh *swift.ObjectCreateFile, err error) {
-	*segmentID++
-	segmentPath := fmt.Sprintf("%s/%08d", segmentPrefix, *segmentID)
-	fh, err = SwiftConnection.ObjectCreate(container, segmentPath, false, "", ObjContentType, nil)
+	segmentName := segmentPath(segmentPrefix, segmentID)
+	fh, err = SwiftConnection.ObjectCreate(container, segmentName, false, "", ObjContentType, nil)
 	*uploaded = 0
 	return
 }

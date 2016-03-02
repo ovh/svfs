@@ -53,8 +53,6 @@ func (o *Object) open(mode fuse.OpenFlags) (oh *ObjectHandle, err error) {
 		return oh, err
 	}
 	if mode.IsWriteOnly() {
-		oh.writing = true
-
 		// Remove segments if the previous file was a manifest
 		_, h, err := SwiftConnection.Object(o.c.Name, o.so.Name)
 		if err != swift.ObjectNotFound {
@@ -62,6 +60,7 @@ func (o *Object) open(mode fuse.OpenFlags) (oh *ObjectHandle, err error) {
 				deleteSegments(o.cs.Name, h[ManifestHeader])
 			}
 		}
+		oh.wd, err = SwiftConnection.ObjectCreate(o.c.Name, o.so.Name, false, "", ObjContentType, nil)
 		return oh, err
 	}
 

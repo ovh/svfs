@@ -53,12 +53,20 @@ Available options are :
 * `--cache-max-access` : targeted cache entry access count. Default value is -1 (unlimited).
 * `--cache-ttl`: targeted cache entry timeout. Default value is 1 minute.
 
+
+### Large objects
+
+If an Object has a size greater than 5 GB, it requires segmentation either as Dynamic Large Object or Static Large Object, in order to be stored in Swift.
+SVFS only supports DLO and requires segments to be stored within a container honoring the naming convention `<container_name>_segments` where `<container_name>` is the name of the container intended to store the manifest file.
+
+Segments size can be adjusted with option `--os-segment-size`, it defaults to 256MB.
+
 ### Limitations
-For the moment the following limitations will kick-in :
-* SVFS container creation and removal is not supported.
+* SVFS does not support creating, moving or deleting containers.
 * SVFS does not support opening a file in append mode.
 * SVFS does not support moving directories.
-* SVFS does not support moving/deleting/uploading SLO/DLO objects.
+* SVFS does not support SLO (but supports DLO).
+* SVFS does not support uid/gid/permissions.
 
 SVFS limitations and particularities of using Openstack Swift as a POSIX filesystem are discussed in the [docs](docs).
 

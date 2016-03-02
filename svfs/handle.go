@@ -1,12 +1,9 @@
 package svfs
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"time"
-
-	"github.com/xlucas/swift"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
@@ -15,14 +12,11 @@ import (
 
 type ObjectHandle struct {
 	target        *Object
-	segment       *swift.ObjectCreateFile
 	rd            io.ReadCloser
-	writing       bool
-	wroteOnce     bool
-	segmentBuf    *bytes.Buffer
+	wd            io.WriteCloser
+	wroteSegment  bool
 	segmentID     uint
 	uploaded      uint64
-	toUpload      uint64
 	segmentPrefix string
 	segmentPath   string
 }
@@ -35,30 +29,18 @@ func (fh *ObjectHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *f
 
 func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) error {
 	if fh.rd != nil {
-		defer fh.rd.Close()
+		fh.rd.Close()
 	}
-	if fh.writing {
-		// Write non-segmented object
-		if !fh.wroteOnce {
-			err := SwiftConnection.ObjectPutBytes(fh.target.c.Name, fh.target.so.Name, fh.segmentBuf.Bytes(), ObjContentType)
-			if err != nil {
-				return err
-			}
-			fh.target.so.Bytes = int64(fh.segmentBuf.Len())
-		}
-		if fh.wroteOnce {
-			// Close last segment
-			fh.segment.Close()
-
+	if fh.wd != nil {
+		fh.wd.Close()
+		if fh.wroteSegment {
 			// Create the manifest
 			headers := map[string]string{ManifestHeader: fh.target.cs.Name + "/" + fh.segmentPrefix, "Content-Length": "0"}
 			SwiftConnection.ObjectDelete(fh.target.c.Name, fh.target.so.Name)
-
 			manifest, err := SwiftConnection.ObjectCreate(fh.target.c.Name, fh.target.so.Name, false, "", ObjContentType, headers)
 			if err != nil {
 				return err
 			}
-
 			manifest.Write(nil)
 			manifest.Close()
 		}
@@ -68,41 +50,39 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 }
 
 func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) (err error) {
-
-	// Prepare first segment
-	if !fh.wroteOnce && fh.segmentBuf == nil {
-		fh.segmentBuf = bytes.NewBuffer(make([]byte, 0, SegmentSize))
-		fh.segmentPrefix = fmt.Sprintf("%s/%d", fh.target.path, time.Now().Unix())
+	if fh.uploaded+uint64(len(req.Data)) <= uint64(SegmentSize) {
+		// File size is less than the size of a segment
+		// or we didn't filled the current segment yet.
+		if _, err := fh.wd.Write(req.Data); err != nil {
+			return err
+		}
+		fh.uploaded += uint64(len(req.Data))
+		fh.target.so.Bytes += int64(fh.uploaded)
+		goto EndWrite
 	}
-
-	// We reached the segment size
-	if uint64(len(req.Data))+fh.toUpload > SegmentSize || fh.uploaded+uint64(len(req.Data)) > SegmentSize {
-		if !fh.wroteOnce {
-			fh.segment, err = createAndWriteSegment(fh.target.cs.Name, fh.segmentPrefix, &fh.segmentID, fh.target.so, fh.segmentBuf.Bytes(), &fh.uploaded)
-			if err != nil {
+	if fh.uploaded+uint64(len(req.Data)) > uint64(SegmentSize) {
+		if !fh.wroteSegment {
+			// File size is greater than the size of a segment
+			// Move it to the segment directory and start writing
+			// next segment.
+			fh.wd.Close()
+			fh.wroteSegment = true
+			fh.segmentPrefix = fmt.Sprintf("%s/%d", fh.target.path, time.Now().Unix())
+			fh.segmentPath = segmentPath(fh.segmentPrefix, &fh.segmentID)
+			if err := SwiftConnection.ObjectMove(fh.target.c.Name, fh.target.path, fh.target.cs.Name, fh.segmentPath); err != nil {
 				return err
 			}
-			fh.toUpload = 0
-			fh.wroteOnce = true
-			fh.segment.Close()
-			fh.segmentBuf.Reset()
-		} else {
-			fh.segment.Close()
 		}
-
-		fh.segment, err = createAndWriteSegment(fh.target.cs.Name, fh.segmentPrefix, &fh.segmentID, fh.target.so, req.Data, &fh.uploaded)
+		fh.wd.Close()
+		fh.wd, err = createAndWriteSegment(fh.target.cs.Name, fh.segmentPrefix, &fh.segmentID, fh.target.so, req.Data, &fh.uploaded)
 		if err != nil {
 			return err
 		}
-	} else if fh.wroteOnce {
-		writeSegmentData(fh.segment, fh.target.so, req.Data, &fh.uploaded)
-	} else if !fh.wroteOnce {
-		fh.segmentBuf.Write(req.Data)
-		fh.toUpload += uint64(len(req.Data))
+		goto EndWrite
 	}
 
+EndWrite:
 	resp.Size = len(req.Data)
-
 	return nil
 }
 
