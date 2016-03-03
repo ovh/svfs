@@ -1,19 +1,20 @@
 # The Swift Virtual File System
 
-*SVFS* is a Virtual File System for Openstack Swift built upon fuse.
+**SVFS** is a Virtual File System over Openstack Swift built upon fuse. It is compatible with [hubic](https://hubic.com),
+[OVH Public Cloud Storage](https://www.ovh.com/fr/cloud/storage/object-storage) and basically every endpoint using a standard Openstack Swift setup. It brings a layer of abstraction over object storage, making it as accessible and convenient as a filesystem, without being intrusive on the way your data is stored.
 
-### Disclaimer
+## Disclaimer
 This is not an official project of the Openstack community.
 
 
-### Requirements
+## Requirements
 
-You will need :
+These packages must be installed :
 
 - fuse
 - ruby
 
-### Installation
+## Installation
 
 Download the latest [release](https://github.com/xlucas/svfs/releases) and unzip it.
 
@@ -26,30 +27,31 @@ Then :
    $ chmod +x !$
 ```
 
-### Usage
+## Usage
 
-You can either use standard mount conventions :
+You can either use standard mount conventions or use the svfs binary directly.
 
+Using the mount command :
 ```
 mount -t svfs -o username=..,password=..,tenant=..,region=..,container=.. myName /mountpoint
 ```
 
-Change your `/etc/ftab` :
+Using `/etc/fstab` :
 ```
-myName /path/to/mountpoint svfs user=..,password=..,tenant=..,region=..,container=.. 0 0
+myName   /mountpoint   svfs   user=..,password=..,tenant=..,region=..,container=..  0 0
 ```
 
-Or use the svfs command directly :
+Using svfs directly :
 
 ```
 svfs --os-username=.. --os-password=.. ... myName /mountpoint &
 ```
 
-### Options
+## Options
 
 #### Keystone options
 
-* `identity_url`: keystone endpoint URL (default is https://auth.cloud.ovh.net/v2.0).
+* `identity_url`: keystone URL (default is https://auth.cloud.ovh.net/v2.0).
 * `username`: your keystone user name.
 * `password`: your keystone password.
 * `tenant`: your project name.
@@ -65,10 +67,10 @@ In case you already have a token and storage URL (for instance with [hubiC](http
 * `container`: which container should be selected while mounting the filesystem. If not set,
 all containers within the tenant will be available under the chosen mountpoint.
 * `segment_size`: large object segments size in MB. When an object has a content larger than
-this setting, it will be uploaded in multiple parts, each of this size. Default is 256 MB.
+this setting, it will be uploaded in multiple parts of the specified size. Default is 256 MB.
 * `timeout`: connection timeout to the swift storage endpoint. If an operation takes longer
-than this timeout and no data has been seen on open sockets, it will stop and return as an
-error. This can happen when copying very large files server-side. Default is 5 minutes.
+than this timeout and no data has been seen on open sockets, an error is returned. This can
+happen when copying non-segmented large files server-side. Default is 5 minutes.
 
 #### Prefetch options
 
@@ -77,27 +79,30 @@ error. This can happen when copying very large files server-side. Default is 5 m
 
 #### Cache options
 
-* `cache_access`: targeted cache entry access count. Default is -1 (unlimited).
-* `cache_entries`: targeted cache size. Default is -1 (it grows unlimited).
-* `cache_ttl`: targeted cache entry timeout. Default is 1 minute.
+* `cache_access`: cache entry access count before refresh. Default is -1 (unlimited access).
+* `cache_entries`: maximum entry count in cache. Default is -1 (unlimited).
+* `cache_ttl`: cache entry timeout before refresh. Default is 1 minute.
 
 #### Debug options
 
-* `debug`: set to true to enable debug log.
-* `profile_cpu`: path where golang CPU profiling will be stored.
-* `profile_ram`: path where golang RAM profiling will be stored.
+* `debug`: set it to true to enable debug log.
+* `profile_cpu`: Golang CPU profiling information will be stored to this file if set.
+* `profile_ram`: Golang RAM profiling information will be stored to this file if set.
 
-### Limitations
+## Limitations
+
+**Be aware that SVFS doesn't transform object storage to block storage.**
+
 * SVFS does not support creating, moving or deleting containers.
 * SVFS does not support opening a file in append mode.
 * SVFS does not support moving directories.
 * SVFS does not support SLO (but supports DLO).
-* SVFS does not support uid/gid/permissions.
+* SVFS does not support setting uid/gid/permissions.
 
-SVFS limitations and particularities of using Openstack Swift as a POSIX filesystem are discussed in the [docs](docs).
+Take a look at the [docs](docs) for further discussions about SVFS approach.
 
-### License
+## License
 This work is under the Apache license, see the [LICENSE](LICENSE) file for details.
 
-### Author
+## Author
 Xavier Lucas
