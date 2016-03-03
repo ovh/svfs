@@ -41,18 +41,26 @@ func (o *Object) Export() fuse.Dirent {
 	}
 }
 
-func (o *Object) open(mode fuse.OpenFlags) (oh *ObjectHandle, err error) {
+func (o *Object) open(mode fuse.OpenFlags, flags *fuse.OpenResponseFlags) (oh *ObjectHandle, err error) {
 	oh = &ObjectHandle{target: o}
 
 	// Append mode is not supported
 	if mode&fuse.OpenAppend == fuse.OpenAppend {
 		return nil, fuse.ENOTSUP
 	}
+
+	// Can't seek in an open file.
+	*flags |= fuse.OpenNonSeekable
+
 	if mode.IsReadOnly() {
 		oh.rd, _, err = SwiftConnection.ObjectOpen(o.c.Name, o.so.Name, false, nil)
 		return oh, err
 	}
 	if mode.IsWriteOnly() {
+
+		// Direct IO
+		*flags |= fuse.OpenDirectIO
+
 		// Remove segments if the previous file was a manifest
 		_, h, err := SwiftConnection.Object(o.c.Name, o.so.Name)
 		if err != swift.ObjectNotFound {
@@ -68,8 +76,7 @@ func (o *Object) open(mode fuse.OpenFlags) (oh *ObjectHandle, err error) {
 }
 
 func (o *Object) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
-	resp.Flags |= fuse.OpenNonSeekable
-	return o.open(req.Flags)
+	return o.open(req.Flags, &resp.Flags)
 }
 
 func (o *Object) Name() string {
