@@ -57,7 +57,7 @@ func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp 
 			return err
 		}
 		fh.uploaded += uint64(len(req.Data))
-		fh.target.so.Bytes += int64(fh.uploaded)
+		fh.target.so.Bytes += int64(len(req.Data))
 		goto EndWrite
 	}
 	if fh.uploaded+uint64(len(req.Data)) > uint64(SegmentSize) {
