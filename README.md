@@ -8,63 +8,84 @@ This is not an official project of the Openstack community.
 
 ### Requirements
 
-You must install FUSE in order to use this filesystem.
+You will need :
+
+- fuse
+- ruby
+
+### Installation
+
+Download the latest [release](https://github.com/xlucas/svfs/releases) and unzip it.
+
+Then :
+```
+   $ mv svfs /usr/local/bin/svfs
+   $ chmod +x !$
+
+   $ mv mount.svfs /sbin/mount.svfs
+   $ chmod +x !$
+```
 
 ### Usage
-Mount all containers for a given tenant :
+
+You can either use standard mount conventions :
 
 ```
-svfs \
---os-auth-url auth_url \
---os-username user \
---os-password password \
---os-region-name region \
---os-tenant-name tenant \
-/path/to/mountpoint &
+mount -t svfs -o username=..,password=..,tenant=..,region=..,container=.. myName /mountpoint
 ```
 
-Mount a specific container at this mountpoint rather than all containers :
-
+Change your `/etc/ftab` :
 ```
-svfs \
---os-auth-url auth_url \
---os-username user \
---os-password password \
---os-region-name region \
---os-tenant-name tenant \
---os-container-name container \
-/path/to/mountpoint &
+myName /path/to/mountpoint svfs user=..,password=..,tenant=..,region=..,container=.. 0 0
 ```
 
-Use token and storage URL instead of openstack credentials (this can be useful for [hubiC](https://hubic.com)) :
+Or use the svfs command directly :
 
 ```
-svfs \
---os-storage-url storage_url \
---os-auth-token token \
-/path/to/mountpoint &
+svfs --os-username=.. --os-password=.. ... myName /mountpoint &
 ```
 
+### Options
 
-### Caching
+#### Keystone options
 
-Caching can be seen as a 2-layer cache where SVFS is layer 1 and the Kernel layer 2.
+* `identity_url`: keystone endpoint URL (default is https://auth.cloud.ovh.net/v2.0).
+* `username`: your keystone user name.
+* `password`: your keystone password.
+* `tenant`: your project name.
+* `region`: the region where your tenant is.
+* `version`: authentication version (0 means auto-discovery which is the default).
 
-You should adapt SVFS cache configuration to your network connection and system resources.
-For instance a high latency system with low bandwith should maximize the cache entry size and use high ttls while a system with a reliable connection should lower these parameters or set access rates. Listing large directories or segmented objects too frequently from your storage provider may significantly slow down SVFS performance.
+In case you already have a token and storage URL (for instance with [hubiC](https://hubic.com)) :
+* `storage_url`: the URL to your data
+* `token`: your token
 
-Available options are :
-* `--cache-max-entries` : targeted cache size. Default value is -1 (it grows unlimited).
-* `--cache-max-access` : targeted cache entry access count. Default value is -1 (unlimited).
-* `--cache-ttl`: targeted cache entry timeout. Default value is 1 minute.
+#### Swift options
 
+* `container`: which container should be selected while mounting the filesystem. If not set,
+all containers within the tenant will be available under the chosen mountpoint.
+* `segment_size`: large object segments size in MB. When an object has a content larger than
+this setting, it will be uploaded in multiple parts, each of this size. Default is 256 MB.
+* `timeout`: connection timeout to the swift storage endpoint. If an operation takes longer
+than this timeout and no data has been seen on open sockets, it will stop and return as an
+error. This can happen when copying very large files server-side. Default is 5 minutes.
 
-### Large objects
+#### Prefetch options
 
-If an Object has a size greater than 5 GB, it requires segmentation either as Dynamic Large Object or Static Large Object, in order to be stored in Swift.
-SVFS only supports DLO and requires segments to be stored within a container honoring the naming convention `<container_name>_segments` where `<container_name>` is the name of the container intended to store the manifest file. When uploading a large file this container will be created if missing.
+* `readahead_size`: Readahead size in bytes. Default is 128 KB.
+* `readdir`: Overall concurrency factor when listing segmented objects in directories (default is 20).
 
-Segments size can be adjusted with option `--os-segment-size`, it defaults to 256MB.
+#### Cache options
+
+* `cache_access`: targeted cache entry access count. Default is -1 (unlimited).
+* `cache_entries`: targeted cache size. Default is -1 (it grows unlimited).
+* `cache_ttl`: targeted cache entry timeout. Default is 1 minute.
+
+#### Debug options
+
+* `debug`: set to true to enable debug log.
+* `profile_cpu`: path where golang CPU profiling will be stored.
+* `profile_ram`: path where golang RAM profiling will be stored.
 
 ### Limitations
 * SVFS does not support creating, moving or deleting containers.

@@ -1,0 +1,60 @@
+#!/usr/bin/env ruby
+
+# *****************************************************************************
+#  SVFS: The Swift Virtual File System
+# *****************************************************************************
+#  SVFS allows mounting Swift storage as a file system, using fuse. Check the
+#  project homepage for details and limitations to this approach.
+# *****************************************************************************
+#  @author : Xavier Lucas
+# *****************************************************************************
+
+if ENV['PATH'].nil?
+  ENV['PATH'] = "/bin:/usr/local/bin"
+end
+
+OPTIONS = {
+    'cache_access'      => '--cache-max-access',
+    'cache_entries'     => '--cache-max-entries',
+    'cache_ttl'         => '--cache-ttl',
+    'container'         => '--os-container-name',
+    'debug'             => '--debug',
+    'identity_url'      => '--os-auth-url',
+    'password'          => '--os-password',
+    'profile_cpu'       => '--profile-cpu',
+    'profile_ram'       => '--profile-ram',
+    'readdir'           => '--readdir-concurrency',
+    'readahead_size'    => '--readahead-size',
+    'region'            => '--os-region-name',
+    'segment_size'      => '--os-segment-size',
+    'storage_url'       => '--os-storage-url',
+    'tenant'            => '--os-tenant-name',
+    'timeout'           => '--os-connect-timeout',
+    'token'             => '--os-auth-token',
+    'username'          => '--os-username',
+    'version'           => '--os-auth-version',
+}
+
+if ARGV[2] != '-o' || ARGV.length != 4
+  puts "Usage: #{File.basename($0)} dev dir [-o option=value,[option=value]...]\n"
+  abort
+end
+
+mount_dev = ARGV[0]
+mount_dir = ARGV[1]
+opts      = ARGV[3].split(',')
+
+opts.select! do |o|
+  part = o.partition('=')
+  opt_key = part.first
+  OPTIONS.has_key?(opt_key)
+end
+
+opts.each do |o|
+  part = o.partition('=')
+  opt_key = part.first
+  o[opt_key] = OPTIONS[opt_key]
+end
+
+system("svfs #{opts.join(' ')} #{mount_dev} #{mount_dir} &")
+

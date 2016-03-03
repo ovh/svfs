@@ -42,7 +42,7 @@ func main() {
 	flag.Uint64Var(&conf.SegmentSizeMB, "os-segment-size", 256, "Swift segment size in MB")
 
 	// Prefetch
-	flag.Uint64Var(&conf.MaxReaddirConcurrency, "max-readdir-concurrency", 20, "Overall concurrency factor when listing directories")
+	flag.Uint64Var(&conf.MaxReaddirConcurrency, "readdir-concurrency", 20, "Overall concurrency factor when listing directories")
 	flag.UintVar(&conf.ReadAheadSize, "readahead-size", 131072, "Per file readahead size in bytes")
 
 	// Cache Options
@@ -57,7 +57,7 @@ func main() {
 	flag.StringVar(&memProf, "profile-ram", "", "Write memory profile to this file")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage : %s [OPTIONS] MOUNTPOINT\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage : %s [OPTIONS] DEVICE MOUNTPOINT\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Available options :\n")
 		flag.PrintDefaults()
 	}
@@ -81,16 +81,18 @@ func main() {
 	}
 
 	// Mountpoint is mandatory
-	if flag.NArg() != 1 {
+	if flag.NArg() != 2 {
 		flag.Usage()
 		os.Exit(2)
 	}
+
+	device := os.Args[len(os.Args)-2]
 	mountpoint := os.Args[len(os.Args)-1]
 
 	// Mount SVFS
 	c, err := fuse.Mount(
 		mountpoint,
-		fuse.FSName("svfs"),
+		fuse.FSName(device),
 		fuse.Subtype("svfs"),
 		fuse.AllowOther(),
 		fuse.MaxReadahead(uint32(conf.ReadAheadSize)),
