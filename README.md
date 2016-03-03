@@ -5,6 +5,11 @@
 ### Disclaimer
 This is not an official project of the Openstack community.
 
+
+### Requirements
+
+You must install FUSE in order to use this filesystem.
+
 ### Usage
 Mount all containers for a given tenant :
 
