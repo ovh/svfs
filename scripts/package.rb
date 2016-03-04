@@ -6,7 +6,8 @@ pkg_main = ARGV[2]
 pkg_vend = ARGV[3]
 pkg_url  = ARGV[4]
 pkg_info = ARGV[5]
-pkg_vers = ARGV[6]
+pkg_lic  = ARGV[6]
+pkg_vers = ARGV[7]
 
 # Package dependencies
 DEPENDENCIES = {
@@ -65,6 +66,7 @@ TARGETS.each do |target|
                #{pkg_deps} \
                --maintainer "#{pkg_main}" \
                --description "#{pkg_info}" \
+               --license "#{pkg_lic}" \
                --url "#{pkg_url}" \
                --vendor "#{pkg_vend}" \
                --version "#{pkg_vers}" \
