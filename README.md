@@ -7,16 +7,9 @@
 This is not an official project of the Openstack community.
 
 
-## Requirements
-
-These packages must be installed :
-
-- fuse
-- ruby
-
 ## Installation
 
-Download the latest [release](https://github.com/xlucas/svfs/releases) packaged for your distribution.
+Download and install the latest [release](https://github.com/xlucas/svfs/releases) packaged for your distribution.
 
 ## Usage
 

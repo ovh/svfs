@@ -8,18 +8,9 @@ PKG_URL = "https://ovh.com"
 PKG_DIR = releases
 
 prepare-release:
-	npm install publish-release
 	gem install fpm
 
 release:
-	$(eval FILES := $(shell scripts/package.rb $(PKG_DIR) $(PKG_NAME) $(PKG_MAIN) $(PKG_VEND) $(PKG_URL) $(PKG_INFO) $(PKG_VERS)))
-	publish-release \
-		--token $(TOKEN) \
-		--reuseRelease \
-		--tag v$(PKG_VERS) \
-		--owner xlucas \
-		--name "Version $(PKG_VERS)" \
-		--repo $(PKG_NAME) \
-		--assets $(FILES)
+	scripts/package.rb $(PKG_DIR) $(PKG_NAME) $(PKG_MAIN) $(PKG_VEND) $(PKG_URL) $(PKG_INFO) $(PKG_VERS)
 
 .PHONY: prepare-release release

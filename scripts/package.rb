@@ -8,23 +8,53 @@ pkg_url  = ARGV[4]
 pkg_info = ARGV[5]
 pkg_vers = ARGV[6]
 
+# Package dependencies
+DEPENDENCIES = {
+  'fuse'  => '> 2.8',
+  'ruby'  => '> 1.9.1',
+}
+
+# Target platforms and architectures
 TARGETS = [
   'linux'   => {
-    'deb' => ['386', 'amd64', 'arm'],
+    'deb' => ['386', 'amd64', 'armhf', 'armel'],
     'rpm' => ['386', 'amd64'],
   },
 ]
 
+# ARM versions mapping for go build
+ARM_VERSIONS = {
+  'armhf' => 6,
+  'armel' => 5,
+}
+
+pkg_deps = ""
+
+# Make release directory
 unless File.directory?("#{pkg_path}")
   Dir.mkdir("#{pkg_path}")
 end
 
+# Build dependencies chain
+DEPENDENCIES.each do |pkg, constraint|
+  pkg_deps << "-d '#{pkg} #{constraint}' "
+end
+
+# Build go binary and package it
 TARGETS.each do |target|
   target.each do |os, pkgmap|
     pkgmap.each do |pkg, archs|
       archs.each do |arch|
+
+        go_arch = arch
+
+        if arch.start_with?('arm')
+          go_arch = 'arm'
+          go_extra = "GOARM=#{ARM_VERSIONS[arch]}"
+        end
+
         pkg_fullname = "#{pkg_path}/go-#{pkg_name}-#{os}-#{arch}"
-        system("GOARCH=#{arch} GOOS=#{os} go build -o #{pkg_fullname}")
+        system("GOARCH=#{go_arch} GOOS=#{os} #{go_extra} go build -o #{pkg_fullname}")
         system("chmod 755 #{pkg_fullname}")
         system(%{fpm --force \
                -s dir \
@@ -32,18 +62,17 @@ TARGETS.each do |target|
                -a #{arch} \
                -n #{pkg_name} \
                -p #{pkg_path} \
+               #{pkg_deps} \
                --maintainer "#{pkg_main}" \
                --description "#{pkg_info}" \
                --url "#{pkg_url}" \
                --vendor "#{pkg_vend}" \
                --version "#{pkg_vers}" \
                #{pkg_fullname}=/usr/local/bin/#{pkg_name} \
-               scripts/mount.#{pkg_name}=/sbin/mount.#{pkg_name} 1>&2 2>/dev/null
+               scripts/mount.#{pkg_name}=/sbin/mount.#{pkg_name}
          })
+
       end
     end
   end
 end
-
-puts Dir["#{pkg_path}/#{pkg_name}*"].join(',')
-
