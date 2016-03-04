@@ -12,7 +12,7 @@ prepare-release:
 	gem install fpm
 
 release:
-	$(eval FILES := $(shell ./package.rb $(PKG_DIR) $(PKG_NAME) $(PKG_MAIN) $(PKG_VEND) $(PKG_URL) $(PKG_INFO) $(PKG_VERS)))
+	$(eval FILES := $(shell scripts/package.rb $(PKG_DIR) $(PKG_NAME) $(PKG_MAIN) $(PKG_VEND) $(PKG_URL) $(PKG_INFO) $(PKG_VERS)))
 	publish-release \
 		--token $(TOKEN) \
 		--reuseRelease \

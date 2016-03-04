@@ -38,7 +38,7 @@ TARGETS.each do |target|
                --vendor "#{pkg_vend}" \
                --version "#{pkg_vers}" \
                #{pkg_fullname}=/usr/local/bin/#{pkg_name} \
-               mount.#{pkg_name}=/sbin/mount.#{pkg_name} 1>&2 2>/dev/null
+               scripts/mount.#{pkg_name}=/sbin/mount.#{pkg_name} 1>&2 2>/dev/null
          })
       end
     end

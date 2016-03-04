@@ -47,13 +47,9 @@ opts      = ARGV[3].split(',')
 opts.select! do |o|
   part = o.partition('=')
   opt_key = part.first
-  OPTIONS.has_key?(opt_key)
-end
-
-opts.each do |o|
-  part = o.partition('=')
-  opt_key = part.first
-  o[opt_key] = OPTIONS[opt_key]
+  if OPTIONS.has_key?(opt_key)
+    o[opt_key] = OPTIONS[opt_key]
+  end
 end
 
 system("svfs #{opts.join(' ')} #{mount_dev} #{mount_dir} &")
