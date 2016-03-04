@@ -6,7 +6,7 @@
 #  SVFS allows mounting Swift storage as a file system, using fuse. Check the
 #  project homepage for details and limitations to this approach.
 # *****************************************************************************
-#  @author : Xavier Lucas
+#  @vendor : OVH
 # *****************************************************************************
 
 if ENV['PATH'].nil?

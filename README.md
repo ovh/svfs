@@ -16,16 +16,7 @@ These packages must be installed :
 
 ## Installation
 
-Download the latest [release](https://github.com/xlucas/svfs/releases) and unzip it.
-
-Then :
-```
-   $ mv svfs /usr/local/bin/svfs
-   $ chmod +x !$
-
-   $ mv mount.svfs /sbin/mount.svfs
-   $ chmod +x !$
-```
+Download the latest [release](https://github.com/xlucas/svfs/releases) packaged for your distribution.
 
 ## Usage
 
@@ -103,6 +94,3 @@ Take a look at the [docs](docs) for further discussions about SVFS approach.
 
 ## License
 This work is under the Apache license, see the [LICENSE](LICENSE) file for details.
-
-## Author
-Xavier Lucas
