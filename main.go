@@ -41,6 +41,11 @@ func main() {
 	flag.DurationVar(&conf.ConnectTimeout, "os-connect-timeout", 5*time.Minute, "Swift connection timeout")
 	flag.Uint64Var(&conf.SegmentSizeMB, "os-segment-size", 256, "Swift segment size in MB")
 
+	// Permissions
+	flag.Uint64Var(&svfs.DefaultUID, "default-uid", 0, "Default UID (default 0)")
+	flag.Uint64Var(&svfs.DefaultGID, "default-gid", 0, "Default GID (default 0)")
+	flag.Uint64Var(&svfs.DefaultMode, "default-mode", 0700, "Default GID")
+
 	// Prefetch
 	flag.Uint64Var(&conf.MaxReaddirConcurrency, "readdir-concurrency", 20, "Overall concurrency factor when listing directories")
 	flag.UintVar(&conf.ReadAheadSize, "readahead-size", 131072, "Per file readahead size in bytes")
@@ -95,6 +100,7 @@ func main() {
 		fuse.FSName(device),
 		fuse.Subtype("svfs"),
 		fuse.AllowOther(),
+		fuse.DefaultPermissions(),
 		fuse.MaxReadahead(uint32(conf.ReadAheadSize)),
 	)
 	if err != nil {

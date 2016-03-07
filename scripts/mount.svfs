@@ -19,7 +19,9 @@ OPTIONS = {
     'cache_ttl'         => '--cache-ttl',
     'container'         => '--os-container-name',
     'debug'             => '--debug',
+    'gid'               => '--default-gid',
     'identity_url'      => '--os-auth-url',
+    'mode'              => '--default-mode',
     'password'          => '--os-password',
     'profile_cpu'       => '--profile-cpu',
     'profile_ram'       => '--profile-ram',
@@ -31,6 +33,7 @@ OPTIONS = {
     'tenant'            => '--os-tenant-name',
     'timeout'           => '--os-connect-timeout',
     'token'             => '--os-auth-token',
+    'uid'               => '--default-uid',
     'username'          => '--os-username',
     'version'           => '--os-auth-version',
 }

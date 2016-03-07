@@ -71,7 +71,9 @@ type Directory struct {
 }
 
 func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
-	a.Mode = os.ModeDir | 0600
+	a.Mode = os.ModeDir | os.FileMode(DefaultMode)
+	a.Gid = uint32(DefaultGID)
+	a.Uid = uint32(DefaultUID)
 	a.Size = uint64(4096)
 	return nil
 }

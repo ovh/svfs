@@ -1,6 +1,8 @@
 package svfs
 
 import (
+	"os"
+
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"github.com/xlucas/swift"
@@ -27,7 +29,9 @@ type Object struct {
 
 func (o *Object) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Size = o.size()
-	a.Mode = 0600
+	a.Mode = os.FileMode(DefaultMode)
+	a.Gid = uint32(DefaultGID)
+	a.Uid = uint32(DefaultUID)
 	a.Mtime = o.so.LastModified
 	a.Ctime = o.so.LastModified
 	a.Crtime = o.so.LastModified

@@ -67,6 +67,11 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 * `cache_entries`: maximum entry count in cache. Default is -1 (unlimited).
 * `cache_ttl`: cache entry timeout before refresh. Default is 1 minute.
 
+#### Ownership options
+* `uid` : default files uid (default is 0 i.e. root).
+* `gid` : default files gid (default is 0 i.e. root).
+* `mode` : default files permissions (default is 0700).
+
 #### Debug options
 
 * `debug`: set it to true to enable debug log.
@@ -81,9 +86,9 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 * SVFS does not support opening a file in append mode.
 * SVFS does not support moving directories.
 * SVFS does not support SLO (but supports DLO).
-* SVFS does not support setting uid/gid/permissions.
+* SVFS does not support per-file uid/gid/permissions (but per-mountpoint).
 
 Take a look at the [docs](docs) for further discussions about SVFS approach.
 
 ## License
-This work is under the Apache license, see the [LICENSE](LICENSE) file for details.
+This work is under the BSD license, see the [LICENSE](LICENSE) file for details.

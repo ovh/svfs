@@ -9,6 +9,9 @@ import (
 
 var (
 	SwiftConnection *swift.Connection
+	DefaultUID      uint64 = 0
+	DefaultGID      uint64 = 0
+	DefaultMode     uint64 = 0700
 )
 
 // SVFS implements the Swift Virtual File System.
