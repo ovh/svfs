@@ -6,7 +6,6 @@
 ## Disclaimer
 This is not an official project of the Openstack community.
 
-
 ## Installation
 
 Download and install the latest [release](https://github.com/xlucas/svfs/releases) packaged for your distribution.
