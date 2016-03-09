@@ -1,5 +1,8 @@
 # The Swift Virtual File System
 
+[![Build Status](https://travis-ci.org/xlucas/svfs.svg?branch=master)](https://travis-ci.org/xlucas/svfs)
+[![GoDoc](https://godoc.org/github.com/xlucas/svfs/svfs?status.svg)](https://godoc.org/github.com/xlucas/svfs/svfs)
+
 **SVFS** is a Virtual File System over Openstack Swift built upon fuse. It is compatible with [hubic](https://hubic.com),
 [OVH Public Cloud Storage](https://www.ovh.com/fr/cloud/storage/object-storage) and basically every endpoint using a standard Openstack Swift setup. It brings a layer of abstraction over object storage, making it as accessible and convenient as a filesystem, without being intrusive on the way your data is stored.
 

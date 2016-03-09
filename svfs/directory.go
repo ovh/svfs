@@ -27,16 +27,28 @@ var (
 	DirectoryLister  = new(DirLister)
 )
 
+// DirLister is a concurrent processor for segmented objects.
+// Its job is to get information about manifests stored within
+// directories.
 type DirLister struct {
 	concurrency uint64
 	taskChan    chan DirListerTask
 }
 
+// DirListerTask represents a manifest ready to be processed by
+// the DirLister. Every task must provide a manifest object and
+// a result channel to which retrieved information will be send.
 type DirListerTask struct {
 	o  *Object
 	rc chan<- *Object
 }
 
+// Start spawns workers waiting for tasks. Once a task comes
+// in the task channel, one worker will process it by opening
+// a connection to swift and asking information about the
+// current manifest. The real size of the object is modified
+// then it sends the modified object into the task result
+// channel.
 func (dl *DirLister) Start() {
 	dl.taskChan = make(chan DirListerTask, dl.concurrency)
 	for i := 0; uint64(i) < dl.concurrency; i++ {
@@ -53,6 +65,9 @@ func (dl *DirLister) Start() {
 	}
 }
 
+// AddTask asynchronously adds a new task to be processed. It
+// returns immediately with no guarantee that the task has been
+// added to the channel nor retrieved by a worker.
 func (dl *DirLister) AddTask(o *Object, c chan<- *Object) {
 	go func() {
 		dl.taskChan <- DirListerTask{
@@ -62,6 +77,7 @@ func (dl *DirLister) AddTask(o *Object, c chan<- *Object) {
 	}()
 }
 
+// Directory represents a standard directory entry.
 type Directory struct {
 	apex bool
 	name string
@@ -70,6 +86,7 @@ type Directory struct {
 	cs   *swift.Container
 }
 
+// Attr fills file attributes of a directory within the current context.
 func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | os.FileMode(DefaultMode)
 	a.Gid = uint32(DefaultGID)
@@ -78,6 +95,8 @@ func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
 	return nil
 }
 
+// Create makes a new object node represented by a file. It returns
+// an object node and an opened file handle.
 func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
 	// Create an empty object in swift
 	path := d.path + req.Name
@@ -117,6 +136,7 @@ func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *f
 	return node, h, nil
 }
 
+// Export gives a direntry for the current directory node.
 func (d *Directory) Export() fuse.Dirent {
 	return fuse.Dirent{
 		Name: d.name,
@@ -124,6 +144,9 @@ func (d *Directory) Export() fuse.Dirent {
 	}
 }
 
+// ReadDirAll reads the content of a directory and returns a
+// list of children nodes as direntries, using/filling the
+// cache of nodes.
 func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err error) {
 	var (
 		dirs         = make(map[string]bool)
@@ -230,6 +253,10 @@ func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, e
 	return direntries, nil
 }
 
+// Lookup gets a children node if its name matches the requested direntry name.
+// If the cache is empty for the current directory, it will fill it and try to
+// match the requested direnty after this operation.
+// It returns ENOENT if not found.
 func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
 	if _, found := DirectoryCache.Peek(d.c.Name, d.path); !found {
 		d.ReadDirAll(ctx)
@@ -251,6 +278,8 @@ func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *f
 	return nil, fuse.ENOENT
 }
 
+// Mkdir creates a new directory node within the current directory. It is represented
+// by an empty object ending with a slash in the Swift container.
 func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error) {
 	var (
 		objName = req.Name + "/"
@@ -276,10 +305,13 @@ func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node,
 	return node, nil
 }
 
+// Name gets the direntry name
 func (d *Directory) Name() string {
 	return d.name
 }
 
+// Remove deletes a direntry and relevant node. It is not supported on container
+// nodes. It handles standard and segmented object deletion.
 func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 	path := d.path + req.Name
 
@@ -373,6 +405,8 @@ func (d *Directory) moveManifest(oldContainer, oldPath, oldName, newContainer, n
 	return nil
 }
 
+// Rename moves a node from its current directory node to a new directory node and updates
+// the cache.
 func (d *Directory) Rename(ctx context.Context, req *fuse.RenameRequest, newDir fs.Node) error {
 	if t, ok := newDir.(*Container); ok {
 		return d.move(d.c.Name, d.path, req.OldName, t.c.Name, t.path, req.NewName)

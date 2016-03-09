@@ -19,6 +19,7 @@ type SVFS struct {
 	conf *Config
 }
 
+// Config represents SVFS configuration settings.
 type Config struct {
 	Container             string
 	ConnectTimeout        time.Duration
@@ -28,6 +29,8 @@ type Config struct {
 	MaxUploadConcurrency  uint64
 }
 
+// Init sets up the filesystem. It sets configuration settings, starts mandatory
+// services and make sure authentication in Swift has succeeded.
 func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) error {
 	s.conf = conf
 	SwiftConnection = sc
@@ -47,6 +50,9 @@ func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) erro
 	return nil
 }
 
+// Root gets the root node of the filesystem. It can either be a fake root node
+// filled with all the containers found for the given Openstack tenant or a container
+// node if a container name have been specified in mount options.
 func (s *SVFS) Root() (fs.Node, error) {
 	// Mount a specific container
 	if s.conf.Container != "" {

@@ -9,9 +9,16 @@ import (
 	"github.com/xlucas/swift"
 )
 
-func segmentPath(segmentPrefix string, segmentID *uint) string {
-	*segmentID++
-	return fmt.Sprintf("%s/%08d", segmentPrefix, *segmentID)
+func createAndWriteSegment(container, segmentPrefix string, segmentID *uint, t *swift.Object, data []byte, uploaded *uint64) (*swift.ObjectCreateFile, error) {
+	segment, err := createSegment(container, segmentPrefix, segmentID, uploaded)
+	if err != nil {
+		return nil, err
+	}
+	err = writeSegmentData(segment, t, data, uploaded)
+	if err != nil {
+		return nil, err
+	}
+	return segment, nil
 }
 
 func createContainer(name string) (*swift.Container, error) {
@@ -56,21 +63,14 @@ func deleteSegments(container, manifestHeader string) error {
 	return nil
 }
 
+func segmentPath(segmentPrefix string, segmentID *uint) string {
+	*segmentID++
+	return fmt.Sprintf("%s/%08d", segmentPrefix, *segmentID)
+}
+
 func writeSegmentData(fh *swift.ObjectCreateFile, t *swift.Object, data []byte, uploaded *uint64) error {
 	_, err := fh.Write(data)
 	t.Bytes += int64(len(data))
 	*uploaded += uint64(len(data))
 	return err
-}
-
-func createAndWriteSegment(container, segmentPrefix string, segmentID *uint, t *swift.Object, data []byte, uploaded *uint64) (*swift.ObjectCreateFile, error) {
-	segment, err := createSegment(container, segmentPrefix, segmentID, uploaded)
-	if err != nil {
-		return nil, err
-	}
-	err = writeSegmentData(segment, t, data, uploaded)
-	if err != nil {
-		return nil, err
-	}
-	return segment, nil
 }

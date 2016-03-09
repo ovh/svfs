@@ -10,6 +10,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+// ObjectHandle represents an open object handle, similarly to
+// file handles.
 type ObjectHandle struct {
 	target        *Object
 	rd            io.ReadCloser
@@ -21,12 +23,18 @@ type ObjectHandle struct {
 	segmentPath   string
 }
 
+// Read gets a swift object data for a request within the current context.
+// The request size is always honored.
 func (fh *ObjectHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
 	resp.Data = make([]byte, req.Size)
 	io.ReadFull(fh.rd, resp.Data)
 	return nil
 }
 
+// Release frees the file handle, closing all readers/writers in use.
+// In case we used this file handle to write a large object, it creates
+// the manifest file. Cache is refreshed if the writer was used during
+// the lifetime of this handle.
 func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) error {
 	if fh.rd != nil {
 		fh.rd.Close()
@@ -49,6 +57,12 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 	return nil
 }
 
+// Write pushes data to a swift object.
+// If we detect that we are writing more data than the configured
+// segment size, then the first object we were writing to is moved
+// to the segment container and named accordingly to DLO conventions.
+// Remaining data will be split into segments sequentially until
+// file handle release is called.
 func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) (err error) {
 	if fh.uploaded+uint64(len(req.Data)) <= uint64(SegmentSize) {
 		// File size is less than the size of a segment

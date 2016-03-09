@@ -17,6 +17,9 @@ var (
 	SegmentSize uint64
 )
 
+// Object is a node representing a swift object.
+// It belongs to a container and segmented objects
+// are bound to a container of segments.
 type Object struct {
 	name      string
 	path      string
@@ -27,6 +30,7 @@ type Object struct {
 	segmented bool
 }
 
+// Attr fills the file attributes for an object node.
 func (o *Object) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Size = o.size()
 	a.Mode = os.FileMode(DefaultMode)
@@ -38,6 +42,7 @@ func (o *Object) Attr(ctx context.Context, a *fuse.Attr) error {
 	return nil
 }
 
+// Export converts this object node as a direntry.
 func (o *Object) Export() fuse.Dirent {
 	return fuse.Dirent{
 		Name: o.Name(),
@@ -79,10 +84,12 @@ func (o *Object) open(mode fuse.OpenFlags, flags *fuse.OpenResponseFlags) (oh *O
 	return nil, fuse.ENOTSUP
 }
 
+// Open returns the file handle associated with this object node.
 func (o *Object) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
 	return o.open(req.Flags, &resp.Flags)
 }
 
+// Name gets the name of the underlying swift object.
 func (o *Object) Name() string {
 	return o.name
 }

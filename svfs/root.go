@@ -18,26 +18,33 @@ const (
 
 var SegmentRegex = regexp.MustCompile("^.+_segments$")
 
+// Root is a fake root node used to hold a list of container nodes.
 type Root struct {
 	*Directory
 }
 
+// Create is not supported on a root node.
 func (r *Root) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
 	return nil, nil, fuse.ENOTSUP
 }
 
+// Mkdir is not supported on a root node.
 func (r *Root) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error) {
 	return nil, fuse.ENOTSUP
 }
 
+// Remove is not supported on a root node.
 func (r *Root) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 	return fuse.ENOTSUP
 }
 
+// Rename is not supported on a root node.
 func (r *Root) Rename(ctx context.Context, req *fuse.RenameRequest, newDir fs.Node) error {
 	return fuse.ENOTSUP
 }
 
+// ReadDirAll retrieves all containers within the current Openstack tenant, as direntries.
+// Segment containers are not shown and created if missing.
 func (r *Root) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err error) {
 	var (
 		baseContainers    = make(map[string]*swift.Container)
@@ -100,6 +107,8 @@ func (r *Root) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err er
 	return direntries, nil
 }
 
+// Lookup gets a container node if its name matches the request
+// name within the current context.
 func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
 	// Fill cache if expired
 	if _, found := DirectoryCache.Peek("", r.path); !found {

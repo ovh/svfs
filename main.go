@@ -16,18 +16,7 @@ import (
 	fusefs "bazil.org/fuse/fs"
 )
 
-func main() {
-	var (
-		debug   bool
-		fs      *svfs.SVFS
-		sc      = swift.Connection{}
-		srv     *fusefs.Server
-		conf    = svfs.Config{}
-		cconf   = svfs.CacheConfig{}
-		cpuProf string
-		memProf string
-	)
-
+func parseFlags(debug *bool, conf *svfs.Config, cconf *svfs.CacheConfig, sc *swift.Connection, cpuProf, memProf *string) {
 	// Swift options
 	flag.StringVar(&sc.AuthUrl, "os-auth-url", "https://auth.cloud.ovh.net/v2.0", "Authentication URL")
 	flag.StringVar(&conf.Container, "os-container-name", "", "Container name")
@@ -57,31 +46,71 @@ func main() {
 
 	// Debug and profiling
 	log.SetOutput(os.Stdout)
-	flag.BoolVar(&debug, "debug", false, "Enable fuse debug log")
-	flag.StringVar(&cpuProf, "profile-cpu", "", "Write cpu profile to this file")
-	flag.StringVar(&memProf, "profile-ram", "", "Write memory profile to this file")
+	flag.BoolVar(debug, "debug", false, "Enable fuse debug log")
+	flag.StringVar(cpuProf, "profile-cpu", "", "Write cpu profile to this file")
+	flag.StringVar(memProf, "profile-ram", "", "Write memory profile to this file")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage : %s [OPTIONS] DEVICE MOUNTPOINT\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Available options :\n")
 		flag.PrintDefaults()
 	}
+
 	flag.Parse()
+}
+
+func setDebug() {
+	fuse.Debug = func(msg interface{}) {
+		log.Printf("FUSE: %s\n", msg)
+	}
+}
+
+func createCPUProf(cpuProf string) {
+	f, err := os.Create(cpuProf)
+	if err != nil {
+		log.Fatal(err)
+	}
+	pprof.StartCPUProfile(f)
+}
+
+func createMemProf(memProf string) {
+	f, err := os.Create(memProf)
+	if err != nil {
+		log.Fatal(err)
+	}
+	pprof.WriteHeapProfile(f)
+	f.Close()
+}
+
+func main() {
+	var (
+		debug   bool
+		fs      = &svfs.SVFS{}
+		sc      = swift.Connection{}
+		srv     *fusefs.Server
+		conf    = svfs.Config{}
+		cconf   = svfs.CacheConfig{}
+		cpuProf string
+		memProf string
+	)
+
+	parseFlags(
+		&debug,
+		&conf,
+		&cconf,
+		&sc,
+		&cpuProf,
+		&memProf,
+	)
 
 	// Debug
 	if debug {
-		fuse.Debug = func(msg interface{}) {
-			log.Printf("FUSE: %s\n", msg)
-		}
+		setDebug()
 	}
 
 	// CPU profiling
 	if cpuProf != "" {
-		f, err := os.Create(cpuProf)
-		if err != nil {
-			log.Fatal(err)
-		}
-		pprof.StartCPUProfile(f)
+		createCPUProf(cpuProf)
 		defer pprof.StopCPUProfile()
 	}
 
@@ -110,14 +139,11 @@ func main() {
 
 	// Pre-Serve: authenticate to identity endpoint
 	// if no token is specified
-	if !sc.Authenticated() {
-		if err = sc.Authenticate(); err != nil {
-			goto Err
-		}
+	if !sc.Authenticated() && sc.Authenticate() != nil {
+		err = fmt.Errorf("Failed to authenticate to %s", sc.AuthUrl)
+		goto Err
 	}
 
-	// Init SVFS
-	fs = &svfs.SVFS{}
 	if err = fs.Init(&sc, &conf, &cconf); err != nil {
 		goto Err
 	}
@@ -133,13 +159,7 @@ func main() {
 
 	// Memory profiling
 	if memProf != "" {
-		f, err := os.Create(memProf)
-		if err != nil {
-			log.Fatal(err)
-		}
-		pprof.WriteHeapProfile(f)
-		f.Close()
-		return
+		createMemProf(memProf)
 	}
 
 	if err = c.MountError; err != nil {
