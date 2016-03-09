@@ -92,5 +92,9 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 
 Take a look at the [docs](docs) for further discussions about SVFS approach.
 
+## Hacking
+
+Make sure to use the latest version of go and follow [contribution guidelines](CONTRIBUTING.md) of SVFS.
+
 ## License
 This work is under the BSD license, see the [LICENSE](LICENSE) file for details.
