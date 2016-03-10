@@ -9,7 +9,7 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/xlucas/svfs/svfs"
+	"github.com/ovh/svfs/svfs"
 	"github.com/xlucas/swift"
 
 	fuse "bazil.org/fuse"
