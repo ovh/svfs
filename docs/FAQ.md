@@ -16,7 +16,7 @@ data should be accessed : it should be consistent across operations. If you are
 looking for local speed rates, then this means you are looking for a local
 filesystem and SVFS is no more than a easier way to achieve synchronization
 between both since it brings support for usual tools when used with appropriate options
-(for instance `rsync -av -W --inplace --progress`). In this case you should rely
+(for instance `rsync -av -W --inplace --size-only --progress`). In this case you should rely
 on an appropriate, journalized, battle-hardened local filesystem. This is also
 where you should manage ownership, permissions and other ACL/extended attributes
 information, relatively to your local users and groups.
