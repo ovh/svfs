@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/ovh/svfs.svg?branch=master)](https://travis-ci.org/ovh/svfs)
 [![GoDoc](https://godoc.org/github.com/ovh/svfs/svfs?status.svg)](https://godoc.org/github.com/ovh/svfs/svfs)
 
-**SVFS** is a Virtual File System over Openstack Swift built upon fuse. It is compatible with [hubic](https://hubic.com),
+**SVFS** is a Virtual File System over Openstack Swift built upon fuse. It is compatible with [hubiC](https://hubic.com),
 [OVH Public Cloud Storage](https://www.ovh.com/fr/cloud/storage/object-storage) and basically every endpoint using a standard Openstack Swift setup. It brings a layer of abstraction over object storage, making it as accessible and convenient as a filesystem, without being intrusive on the way your data is stored.
 
 ## Disclaimer
@@ -33,6 +33,11 @@ Using svfs directly :
 svfs --os-username=.. --os-password=.. ... myName /mountpoint &
 ```
 
+## Usage with OVH products
+
+- Usage with OVH Public Cloud Storage is explained [here](docs/PCS.md).
+- Usage with hubiC is explained [here](docs/HubiC.md).
+
 ## Options
 
 #### Keystone options
@@ -45,8 +50,8 @@ svfs --os-username=.. --os-password=.. ... myName /mountpoint &
 * `version`: authentication version (0 means auto-discovery which is the default).
 
 In case you already have a token and storage URL (for instance with [hubiC](https://hubic.com)) :
-* `storage_url`: the URL to your data
-* `token`: your token
+* `storage_url`: the URL to your data.
+* `token`: your token.
 
 #### Swift options
 
@@ -54,6 +59,7 @@ In case you already have a token and storage URL (for instance with [hubiC](http
 all containers within the tenant will be available under the chosen mountpoint.
 * `segment_size`: large object segments size in MB. When an object has a content larger than
 this setting, it will be uploaded in multiple parts of the specified size. Default is 256 MB.
+Segment size should not exceed 5 GB.
 * `timeout`: connection timeout to the swift storage endpoint. If an operation takes longer
 than this timeout and no data has been seen on open sockets, an error is returned. This can
 happen when copying non-segmented large files server-side. Default is 5 minutes.
