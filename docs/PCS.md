@@ -30,7 +30,7 @@ Source this file and enter your password when prompted.
 Once you have sourced the *openrc* file, your credentials will
 be available as environment variables, starting with prefix `OS_`.
 
-You can then use your credentials with svfs like this :
+You can use them with svfs like this :
 
 ```
 sudo mount -t svfs -o username=$OS_USERNAME,password=$OS_PASSWORD,tenant=$OS_TENANT_NAME,region=$OS_REGION_NAME pcs /mountpoint

@@ -19,7 +19,7 @@ sudo mount -t svfs -o token=<token>,storage_url=<endpoint>,container=default hub
 ```
 
 Note : your token will expire after 24 hours, after this time you will need a new one. We will
-limitation in the future.
+address this limitation in the future.
 
 For the moment, you can call the hubiC API from an [application](https://hubic.com/home/browser/apps/)
 registered in your hubiC account to automatically remount your storage space with a fresh token.

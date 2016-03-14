@@ -24,7 +24,7 @@ mount -t svfs -o username=..,password=..,tenant=..,region=..,container=.. myName
 
 Using `/etc/fstab` :
 ```
-myName   /mountpoint   svfs   user=..,password=..,tenant=..,region=..,container=..  0 0
+myName   /mountpoint   svfs   username=..,password=..,tenant=..,region=..,container=..  0 0
 ```
 
 Using svfs directly :
