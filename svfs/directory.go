@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/xlucas/swift"
 
@@ -82,6 +83,7 @@ type Directory struct {
 	apex bool
 	name string
 	path string
+	o    *swift.Object
 	c    *swift.Container
 	cs   *swift.Container
 }
@@ -89,6 +91,11 @@ type Directory struct {
 // Attr fills file attributes of a directory within the current context.
 func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | os.FileMode(DefaultMode)
+	if d.o != nil {
+		a.Ctime = d.o.LastModified
+		a.Mtime = d.o.LastModified
+		a.Crtime = d.o.LastModified
+	}
 	a.Gid = uint32(DefaultGID)
 	a.Uid = uint32(DefaultUID)
 	a.Size = uint64(4096)
@@ -180,30 +187,39 @@ func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, e
 		var (
 			child    Node
 			o        = object
+			path     = object.Name
 			fileName = strings.TrimPrefix(o.Name, d.path)
 		)
 
 		// This is a directory
-		if o.ContentType == DirContentType && !FolderRegex.Match([]byte(o.Name)) {
-			dirs[fileName] = true
+		if o.ContentType == DirContentType && o.Name != d.path && !o.PseudoDirectory {
+			if !FolderRegex.Match([]byte(o.Name)) {
+				path += "/"
+			} else {
+				fileName = fileName[:len(fileName)-1]
+			}
 			child = &Directory{
 				c:    d.c,
 				cs:   d.cs,
-				path: o.Name + "/",
+				o:    &o,
+				path: path,
 				name: fileName,
 			}
-		} else if o.PseudoDirectory &&
-			FolderRegex.Match([]byte(o.Name)) && fileName != "" {
+			dirs[fileName] = true
+		} else if o.PseudoDirectory && o.Name != d.path {
 			// This is a pseudo directory. Add it only if the real directory is missing
-			realName := fileName[:len(fileName)-1]
-			if !dirs[realName] {
-				dirs[realName] = true
+			if FolderRegex.Match([]byte(o.Name)) {
+				fileName = fileName[:len(fileName)-1]
+			}
+			if !dirs[fileName] {
 				child = &Directory{
 					c:    d.c,
 					cs:   d.cs,
+					o:    &o,
 					path: o.Name,
-					name: realName,
+					name: fileName,
 				}
+				dirs[fileName] = true
 			}
 		} else if !FolderRegex.Match([]byte(o.Name)) {
 			// This is a swift object
@@ -282,8 +298,7 @@ func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *f
 // by an empty object ending with a slash in the Swift container.
 func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error) {
 	var (
-		objName = req.Name + "/"
-		absPath = d.path + objName
+		absPath = d.path + req.Name
 	)
 
 	// Create the file in swift
@@ -294,9 +309,14 @@ func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node,
 	// Directory object
 	node := &Directory{
 		name: req.Name,
-		path: absPath,
-		c:    d.c,
-		cs:   d.cs,
+		path: absPath + "/",
+		o: &swift.Object{
+			Name:         absPath,
+			ContentType:  DirContentType,
+			LastModified: time.Now(),
+		},
+		c:  d.c,
+		cs: d.cs,
 	}
 
 	// Cache eviction
@@ -317,15 +337,19 @@ func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 
 	if req.Dir {
 		path += "/"
-		node, found := DirectoryCache.Peek(d.c.Name, d.path)
-		if !found {
+		node := DirectoryCache.Get(d.c.Name, d.path, req.Name)
+
+		dir, ok := node.(*Directory)
+		if !ok {
 			return fuse.ENOTSUP
 		}
-		if _, ok := node.(*Directory); !ok {
-			return fuse.ENOTSUP
+
+		SwiftConnection.ObjectDelete(dir.c.Name, dir.o.Name)
+		if _, found := DirectoryCache.Peek(dir.c.Name, dir.path); found {
+			DirectoryCache.DeleteAll(dir.c.Name, dir.path)
 		}
-		SwiftConnection.ObjectDelete(d.c.Name, path)
-		DirectoryCache.DeleteAll(d.c.Name, d.path)
+		DirectoryCache.Delete(dir.c.Name, d.path, dir.name)
+
 	}
 
 	if !req.Dir {
