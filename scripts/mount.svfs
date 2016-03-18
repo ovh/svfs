@@ -47,14 +47,18 @@ end
 mount_dev = ARGV[0]
 mount_dir = ARGV[1]
 opts      = ARGV[3].split(',')
+extra     = ""
 
 opts.select! do |o|
   part = o.partition('=')
   opt_key = part.first
+  if opt_key == "go_gc"
+    extra = "GOGC=#{part.last} "
+  end
   if OPTIONS.has_key?(opt_key)
     o[opt_key] = OPTIONS[opt_key]
   end
 end
 
-system("svfs #{opts.join(' ')} #{mount_dev} #{mount_dir} &")
+system("#{extra}svfs #{opts.join(' ')} #{mount_dev} #{mount_dir} &")
 

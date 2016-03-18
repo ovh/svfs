@@ -87,6 +87,17 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 * `profile_cpu`: Golang CPU profiling information will be stored to this file if set.
 * `profile_ram`: Golang RAM profiling information will be stored to this file if set.
 
+
+#### Performance options
+* `go_gc`: set garbage collection target percentage. A garbage collection is triggered when the
+heap size exceeds, by this rate, the remaining heap size after the previous collection. A lower
+value triggers frequent GC, which means memory usage will be lower at the cost of higher CPU
+usage. Setting a higher value will let the heap size grow by this percent without collection,
+reducing GC frequency. A Garbage collection is forced if none happened for 2 minutes. Note that
+unused heap memory is not reclaimed after collection, it is returned to the operating system
+only if it appears unused for 5 minutes.
+
+
 ## Limitations
 
 **Be aware that SVFS doesn't transform object storage to block storage.**
