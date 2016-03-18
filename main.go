@@ -35,7 +35,7 @@ func parseFlags(debug *bool, conf *svfs.Config, cconf *svfs.CacheConfig, sc *swi
 	// Permissions
 	flag.Uint64Var(&svfs.DefaultUID, "default-uid", 0, "Default UID (default 0)")
 	flag.Uint64Var(&svfs.DefaultGID, "default-gid", 0, "Default GID (default 0)")
-	flag.Uint64Var(&svfs.DefaultMode, "default-mode", 0700, "Default GID")
+	flag.Uint64Var(&svfs.DefaultMode, "default-mode", 0700, "Default permissions")
 
 	// Prefetch
 	flag.Uint64Var(&conf.MaxReaddirConcurrency, "readdir-concurrency", 20, "Overall concurrency factor when listing directories")
