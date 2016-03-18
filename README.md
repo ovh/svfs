@@ -83,6 +83,7 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 #### Debug options
 
 * `debug`: set it to true to enable debug log.
+* `profile_addr`: Golang profiling information will be served at this address (`ip:port`) if set.
 * `profile_cpu`: Golang CPU profiling information will be stored to this file if set.
 * `profile_ram`: Golang RAM profiling information will be stored to this file if set.
 

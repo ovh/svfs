@@ -23,6 +23,7 @@ OPTIONS = {
     'identity_url'      => '--os-auth-url',
     'mode'              => '--default-mode',
     'password'          => '--os-password',
+    'profile_addr'      => '--profile-bind',
     'profile_cpu'       => '--profile-cpu',
     'profile_ram'       => '--profile-ram',
     'readdir'           => '--readdir-concurrency',

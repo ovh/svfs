@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"runtime/pprof"
 	"time"
@@ -16,7 +18,7 @@ import (
 	fusefs "bazil.org/fuse/fs"
 )
 
-func parseFlags(debug *bool, conf *svfs.Config, cconf *svfs.CacheConfig, sc *swift.Connection, cpuProf, memProf *string) {
+func parseFlags(debug *bool, conf *svfs.Config, cconf *svfs.CacheConfig, sc *swift.Connection, profAddr, cpuProf, memProf *string) {
 	// Swift options
 	flag.StringVar(&sc.AuthUrl, "os-auth-url", "https://auth.cloud.ovh.net/v2.0", "Authentication URL")
 	flag.StringVar(&conf.Container, "os-container-name", "", "Container name")
@@ -47,6 +49,7 @@ func parseFlags(debug *bool, conf *svfs.Config, cconf *svfs.CacheConfig, sc *swi
 	// Debug and profiling
 	log.SetOutput(os.Stdout)
 	flag.BoolVar(debug, "debug", false, "Enable fuse debug log")
+	flag.StringVar(profAddr, "profile-bind", "", "Profiling information will be served at this address")
 	flag.StringVar(cpuProf, "profile-cpu", "", "Write cpu profile to this file")
 	flag.StringVar(memProf, "profile-ram", "", "Write memory profile to this file")
 
@@ -84,14 +87,15 @@ func createMemProf(memProf string) {
 
 func main() {
 	var (
-		debug   bool
-		fs      = &svfs.SVFS{}
-		sc      = swift.Connection{}
-		srv     *fusefs.Server
-		conf    = svfs.Config{}
-		cconf   = svfs.CacheConfig{}
-		cpuProf string
-		memProf string
+		debug    bool
+		fs       = &svfs.SVFS{}
+		sc       = swift.Connection{}
+		srv      *fusefs.Server
+		conf     = svfs.Config{}
+		cconf    = svfs.CacheConfig{}
+		profAddr string
+		cpuProf  string
+		memProf  string
 	)
 
 	parseFlags(
@@ -99,6 +103,7 @@ func main() {
 		&conf,
 		&cconf,
 		&sc,
+		&profAddr,
 		&cpuProf,
 		&memProf,
 	)
@@ -106,6 +111,15 @@ func main() {
 	// Debug
 	if debug {
 		setDebug()
+	}
+
+	// Live profiling
+	if profAddr != "" {
+		go func() {
+			if err := http.ListenAndServe(profAddr, nil); err != nil {
+				log.Fatal(err)
+			}
+		}()
 	}
 
 	// CPU profiling
