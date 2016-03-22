@@ -9,6 +9,8 @@ import (
 
 var (
 	SwiftConnection *swift.Connection
+	Version         string = "0.4.2"
+	UserAgent       string = "svfs/" + Version
 	DefaultUID      uint64 = 0
 	DefaultGID      uint64 = 0
 	DefaultMode     uint64 = 0700
@@ -38,6 +40,7 @@ func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) erro
 	DirectoryLister = &DirLister{concurrency: conf.MaxReaddirConcurrency}
 	SwiftConnection.ConnectTimeout = conf.ConnectTimeout
 	SegmentSize = conf.SegmentSizeMB * (1 << 20)
+	swift.DefaultUserAgent = UserAgent
 
 	// Start directory lister
 	DirectoryLister.Start()

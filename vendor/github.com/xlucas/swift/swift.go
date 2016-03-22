@@ -21,8 +21,11 @@ import (
 	"time"
 )
 
+var (
+	DefaultUserAgent = "goswift/1.0"
+)
+
 const (
-	DefaultUserAgent    = "goswift/1.0"         // Default user agent
 	DefaultRetries      = 3                     // Default number of retries on token expiry
 	TimeFormat          = "2006-01-02T15:04:05" // Python date format for json replies parsed as UTC
 	UploadTar           = "tar"                 // Data format specifier for Connection.BulkUpload().
