@@ -16,7 +16,8 @@ data should be accessed : it should be consistent across operations. If you are
 looking for local speed rates, then this means you are looking for a local
 filesystem and SVFS is no more than a easier way to achieve synchronization
 between both since it brings support for usual tools when used with appropriate options
-(for instance `rsync -av -W --inplace --size-only --progress`). In this case you should rely
+(for instance `rsync -av -W --inplace --size-only --progress` for the first run
+then `rsync -av -W --inplace -u --progress` afterwards). In this case you should rely
 on an appropriate, journalized, battle-hardened local filesystem. This is also
 where you should manage ownership, permissions and other ACL/extended attributes
 information, relatively to your local users and groups.
@@ -28,7 +29,7 @@ in a way which is compatible with POSIX filesystems. Indeed, Swift supports
 ACLs however it can not be converted reliably as file permissions or ownership.
 A basic implementation could use Swift's metadata to make this possible but the
 performance impact would be huge since a request would be necessary for every
-single file within a container and it makes little sense as uid/gid mapping 
+single file within a container and it makes little sense as uid/gid mapping
 can differ between two mountpoints.
 
 ### Why are creation/access times erroneous ?
