@@ -1,4 +1,4 @@
-# Usage on OVH Public Cloud Storage (PCS)
+# Using svfs with OVH Public Cloud Storage (PCS)
 
 ## Retrieve your credentials
 
@@ -23,7 +23,6 @@ Log into the OVH API with your customer account or using your
 application credentials. You can retrieve the *openrc* file
 by calling `/cloud/project/{serviceName}/user/{userId}/openrc`.
 Source this file and enter your password when prompted.
-
 
 ## Mounting containers
 

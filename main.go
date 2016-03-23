@@ -32,6 +32,10 @@ func parseFlags(debug *bool, conf *svfs.Config, cconf *svfs.CacheConfig, sc *swi
 	flag.DurationVar(&conf.ConnectTimeout, "os-connect-timeout", 5*time.Minute, "Swift connection timeout")
 	flag.Uint64Var(&conf.SegmentSizeMB, "os-segment-size", 256, "Swift segment size in MB")
 
+	// Hubic
+	flag.StringVar(&svfs.HubicAuthorization, "hubic-authorization", "", "Hubic authorization code")
+	flag.StringVar(&svfs.HubicRefreshToken, "hubic-refresh-token", "", "Hubic refresh token")
+
 	// Permissions
 	flag.Uint64Var(&svfs.DefaultUID, "default-uid", 0, "Default UID (default 0)")
 	flag.Uint64Var(&svfs.DefaultGID, "default-gid", 0, "Default GID (default 0)")
@@ -151,13 +155,7 @@ func main() {
 	}
 	defer c.Close()
 
-	// Pre-Serve: authenticate to identity endpoint
-	// if no token is specified
-	if !sc.Authenticated() && sc.Authenticate() != nil {
-		err = fmt.Errorf("Failed to authenticate to %s", sc.AuthUrl)
-		goto Err
-	}
-
+	// Initialize SVFS
 	if err = fs.Init(&sc, &conf, &cconf); err != nil {
 		goto Err
 	}

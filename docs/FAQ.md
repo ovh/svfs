@@ -3,22 +3,21 @@
 ### How does it compare to hubicfuse, cloudfuse, swiftFS ... ?
 
 SVFS supports authentication versions 1/2/3, is stable and fully connected.
-This means SVFS won't play with unsafe pointers all the time,
-avoiding segfaults. Also, SVFS will make read/write operations atomic :
+This means svfs won't play with unsafe pointers all the time,
+avoiding segfaults. Also, svfs will make read/write operations atomic :
 it won't return to the caller until data has been read/written from/to the
 network. In other words no local buffering is taking place so i.e. if you
-want to rsync to/from an SVFS mountpoint you will get the real progress
+want to rsync to/from an svfs mountpoint you will get the real progress
 of this operation and not the progress of local buffering. An other consequence
 is that you'll never require space on your local disk to read/write data from
 a file. Standard buffering is done in memory and your data is always a stream
 on the network. This is not the role of a network filesystem to chose how your
 data should be accessed : it should be consistent across operations. If you are
 looking for local speed rates, then this means you are looking for a local
-filesystem and SVFS is no more than a easier way to achieve synchronization
+filesystem and svfs is no more than a easier way to achieve synchronization
 between both since it brings support for usual tools when used with appropriate options
-(for instance `rsync -av -W --inplace --size-only --progress` for the first run
-then `rsync -av -W --inplace -u --progress` afterwards). In this case you should rely
-on an appropriate, journalized, battle-hardened local filesystem. This is also
+(for instance `rsync -av -W --inplace --update --progress`). In this case you should
+rely on an appropriate, journalized, battle-hardened local filesystem. This is also
 where you should manage ownership, permissions and other ACL/extended attributes
 information, relatively to your local users and groups.
 

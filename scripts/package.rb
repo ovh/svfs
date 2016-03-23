@@ -71,7 +71,8 @@ TARGETS.each do |target|
                --vendor "#{pkg_vend}" \
                --version "#{pkg_vers}" \
                #{pkg_fullname}=/usr/local/bin/#{pkg_name} \
-               scripts/mount.#{pkg_name}=/sbin/mount.#{pkg_name}
+               scripts/mount.#{pkg_name}=/sbin/mount.#{pkg_name} \
+               scripts/hubic-application.rb=/usr/local/bin/hubic-application
          })
 
       end

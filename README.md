@@ -49,9 +49,14 @@ svfs --os-username=.. --os-password=.. ... myName /mountpoint &
 * `region`: the region where your tenant is.
 * `version`: authentication version (0 means auto-discovery which is the default).
 
-In case you already have a token and storage URL (for instance with [hubiC](https://hubic.com)) :
+In case you already have a token and storage URL, you can also use (while the token is still valid) :
 * `storage_url`: the URL to your data.
 * `token`: your token.
+
+#### Hubic options
+
+* `hubic_auth`: hubic authorization token as returned by the `hubic-application` command.
+* `hubic_token` : hubic refresh token as returned by the `hubic-application` command.
 
 #### Swift options
 
