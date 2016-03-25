@@ -60,5 +60,8 @@ opts.select! do |o|
   end
 end
 
-system("#{extra}svfs #{opts.join(' ')} #{mount_dev} #{mount_dir} &")
+if extra.empty?
+  extra = "GOGC=60 "
+end
 
+system("#{extra}svfs #{opts.join(' ')} #{mount_dev} #{mount_dir} &")
