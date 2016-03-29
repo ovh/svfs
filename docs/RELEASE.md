@@ -1,8 +1,9 @@
 # Changelog
 
 ### FEATURES :
-- [#29] Support for remote profiling
-- Support for gc rate option
+- Automatic token refresh for hubic
+- Handy helper command `hubic-application` provides permanent mount options
 
-### BUGFIX :
-- [#28] Directory removal fails silently on non-pseudo directory
+### IMPROVEMENT :
+- Default `go_gc` value set to `60`
+- Tests
