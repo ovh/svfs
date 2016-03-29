@@ -38,9 +38,8 @@ end
 # -----------------------------------------
 #  TESTS
 # -----------------------------------------
-# In order to run, the
-# following env vars must
-# be set.
+# In order to run, the following env vars
+# must be set.
 #
 # TEST_MOUNTPOINT : an svfs mountpoint
 # TEST_SEG_SIZE   : segmented file size
