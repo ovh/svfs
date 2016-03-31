@@ -13,8 +13,9 @@ package = {
 }
 
 # -----------------------------------------
-#  PRE-RELEASE
+#  PREPARE-RELEASE
 # -----------------------------------------
+desc 'Prepare the releasing processs'
 task :prepare_release do |t, args|
   system("gem install fpm")
 end
@@ -22,6 +23,7 @@ end
 # -----------------------------------------
 #  RELEASE
 # -----------------------------------------
+desc 'Release a new version'
 task :release, [:version] => [:prepare_release] do |t, args|
   system(%Q(scripts/package.rb \
          "#{package[:path]}" \
@@ -45,6 +47,7 @@ end
 # TEST_SEG_SIZE   : segmented file size
 # TEST_NSEG_SIZE  : standard file size
 #
+desc 'Run tests'
 Rake::TestTask.new do |t|
   t.libs << "test"
   t.test_files = FileList['test/*.rb']
