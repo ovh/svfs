@@ -77,7 +77,8 @@ func (o *Object) open(mode fuse.OpenFlags, flags *fuse.OpenResponseFlags) (oh *O
 				deleteSegments(o.cs.Name, h[ManifestHeader])
 			}
 		}
-		oh.wd, err = SwiftConnection.ObjectCreate(o.c.Name, o.so.Name, false, "", ObjContentType, nil)
+		headers := map[string]string{AutoContent: "true"}
+		oh.wd, err = SwiftConnection.ObjectCreate(o.c.Name, o.so.Name, false, "", "", headers)
 		return oh, err
 	}
 

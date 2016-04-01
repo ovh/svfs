@@ -43,9 +43,13 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 		fh.wd.Close()
 		if fh.wroteSegment {
 			// Create the manifest
-			headers := map[string]string{ManifestHeader: fh.target.cs.Name + "/" + fh.segmentPrefix, "Content-Length": "0"}
+			headers := map[string]string{
+				ManifestHeader:   fh.target.cs.Name + "/" + fh.segmentPrefix,
+				"Content-Length": "0",
+				AutoContent:      "true",
+			}
 			SwiftConnection.ObjectDelete(fh.target.c.Name, fh.target.so.Name)
-			manifest, err := SwiftConnection.ObjectCreate(fh.target.c.Name, fh.target.so.Name, false, "", ObjContentType, headers)
+			manifest, err := SwiftConnection.ObjectCreate(fh.target.c.Name, fh.target.so.Name, false, "", "", headers)
 			if err != nil {
 				return err
 			}

@@ -18,6 +18,7 @@ import (
 const (
 	DirContentType = "application/directory"
 	ObjContentType = "application/octet-stream"
+	AutoContent    = "X-Detect-Content-Type"
 )
 
 var (
@@ -107,7 +108,8 @@ func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
 func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
 	// Create an empty object in swift
 	path := d.path + req.Name
-	w, err := SwiftConnection.ObjectCreate(d.c.Name, path, false, "", ObjContentType, nil)
+	headers := map[string]string{AutoContent: "true"}
+	w, err := SwiftConnection.ObjectCreate(d.c.Name, path, false, "", "", headers)
 	if err != nil {
 		return nil, nil, fuse.EIO
 	}
