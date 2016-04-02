@@ -70,7 +70,7 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) (err error) {
 	if fh.uploaded+uint64(len(req.Data)) <= uint64(SegmentSize) {
 		// File size is less than the size of a segment
-		// or we didn't filled the current segment yet.
+		// or we didn't fill the current segment yet.
 		if _, err := fh.wd.Write(req.Data); err != nil {
 			return err
 		}

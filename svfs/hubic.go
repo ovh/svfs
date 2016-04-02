@@ -115,7 +115,7 @@ func (h *HubicAuth) Token() string {
 	return h.credentials.Token
 }
 
-// CdnUrl retrives the CDN URL from the authentication
+// CdnUrl retrieves the CDN URL from the authentication
 // response.
 func (h *HubicAuth) CdnUrl() string {
 	return ""

@@ -14,7 +14,7 @@ to use its API. Authentication is achieved using the OAUTH protocol.
 
 SVFS will handle the job of fetching a token from the hubiC API everytime this
 is necessary using user-defined applications and their credentials. It comes
-with an helper command, `hubic-application` that will handle all the hassle of
+with a helper command, `hubic-application` that will handle all the hassle of
 registring an application in order to use it with svfs (i.e. setting scope,
 getting request token, getting access token and finally getting your refresh token).
 

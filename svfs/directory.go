@@ -133,7 +133,7 @@ func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *f
 		cs:   d.cs,
 	}
 
-	// Get object handler handler
+	// Get object handler
 	h, err := node.open(fuse.OpenWriteOnly, &resp.Flags)
 	if err != nil {
 		return nil, nil, fuse.EIO

@@ -46,7 +46,7 @@ func (c *Cache) key(container, path string) string {
 }
 
 // AddAll creates a new cache entry with the key container:path and a map of nodes
-// as a value. Node represent the parent node type. If the cache entry count limit is
+// as a value. Node represents the parent node type. If the cache entry count limit is
 // reached, it will be marked as temporary thus evicted after one read.
 func (c *Cache) AddAll(container, path string, node Node, nodes map[string]Node) {
 	entry := &CacheValue{
