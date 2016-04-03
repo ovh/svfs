@@ -58,16 +58,15 @@ func (o *Object) open(mode fuse.OpenFlags, flags *fuse.OpenResponseFlags) (oh *O
 		return nil, fuse.ENOTSUP
 	}
 
-	// Can't seek in an open file.
-	*flags |= fuse.OpenNonSeekable
-
 	if mode.IsReadOnly() {
 		oh.rd, _, err = SwiftConnection.ObjectOpen(o.c.Name, o.so.Name, false, nil)
 		return oh, err
 	}
 	if mode.IsWriteOnly() {
 
-		// Direct IO
+		// Can't write with an offset
+		*flags |= fuse.OpenNonSeekable
+		// Don't cache writes
 		*flags |= fuse.OpenDirectIO
 
 		// Remove segments if the previous file was a manifest
