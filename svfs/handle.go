@@ -14,7 +14,7 @@ import (
 // file handles.
 type ObjectHandle struct {
 	target        *Object
-	rd            io.ReadCloser
+	rd            io.ReadSeeker
 	wd            io.WriteCloser
 	wroteSegment  bool
 	segmentID     uint
@@ -26,6 +26,7 @@ type ObjectHandle struct {
 // Read gets a swift object data for a request within the current context.
 // The request size is always honored.
 func (fh *ObjectHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
+	fh.rd.Seek(req.Offset, 0)
 	resp.Data = make([]byte, req.Size)
 	io.ReadFull(fh.rd, resp.Data)
 	return nil
@@ -37,7 +38,9 @@ func (fh *ObjectHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *f
 // the lifetime of this handle.
 func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) error {
 	if fh.rd != nil {
-		fh.rd.Close()
+		if closer, ok := fh.rd.(io.Closer); ok {
+			closer.Close()
+		}
 	}
 	if fh.wd != nil {
 		fh.wd.Close()
