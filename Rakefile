@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'rake/testtask'
+require_relative 'scripts/package.rb'
 
 package = {
   :name       => 'svfs',
@@ -25,16 +26,8 @@ end
 # -----------------------------------------
 desc 'Release a new version'
 task :release, [:version] => [:prepare_release] do |t, args|
-  system(%Q(scripts/package.rb \
-         "#{package[:path]}" \
-         "#{package[:name]}" \
-         "#{package[:maintainer]}" \
-         "#{package[:vendor]}" \
-         "#{package[:url]}" \
-         "#{package[:info]}" \
-         "#{package[:licence]}" \
-         "#{args.version}"
-  ))
+  mkdir_p package[:path]
+  release(package, args.version)
 end
 
 # -----------------------------------------
