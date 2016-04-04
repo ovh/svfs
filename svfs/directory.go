@@ -369,7 +369,9 @@ func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 				if !SegmentPathRegex.Match([]byte(h[ManifestHeader])) {
 					return fmt.Errorf("Invalid segment path for manifest %s", req.Name)
 				}
-				deleteSegments(d.cs.Name, h[ManifestHeader])
+				if err := deleteSegments(d.cs.Name, h[ManifestHeader]); err != nil {
+					return err
+				}
 			}
 		}
 		SwiftConnection.ObjectDelete(d.c.Name, path)

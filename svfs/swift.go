@@ -41,23 +41,26 @@ func createSegment(container, segmentPrefix string, segmentID *uint, uploaded *u
 }
 
 func deleteSegments(container, manifestHeader string) error {
-	segmentPrefix := strings.Trim(manifestHeader, container+"/")
+	prefix := strings.TrimPrefix(manifestHeader, container+"/")
 
 	// Custom segment container name is not supported
-	if segmentPrefix == manifestHeader {
+	if prefix == manifestHeader {
 		return fuse.ENOTSUP
 	}
 
+	// Find segments
 	segments, err := SwiftConnection.ObjectNamesAll(container, &swift.ObjectsOpts{
-		Prefix: segmentPrefix,
+		Prefix: prefix,
 	})
 	if err != nil {
 		return err
 	}
 
-	result, err := SwiftConnection.BulkDelete(container, segments)
-	if err != nil || result.NumberDeleted != int64(len(segments)) {
-		return err
+	// Delete segments
+	for _, segment := range segments {
+		if err := SwiftConnection.ObjectDelete(container, segment); err != nil {
+			return err
+		}
 	}
 
 	return nil

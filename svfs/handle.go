@@ -56,6 +56,7 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 			if err != nil {
 				return err
 			}
+			fh.target.segmented = true
 			manifest.Write(nil)
 			manifest.Close()
 		}
