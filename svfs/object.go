@@ -73,7 +73,10 @@ func (o *Object) open(mode fuse.OpenFlags, flags *fuse.OpenResponseFlags) (oh *O
 		_, h, err := SwiftConnection.Object(o.c.Name, o.so.Name)
 		if err != swift.ObjectNotFound {
 			if SegmentPathRegex.Match([]byte(h[ManifestHeader])) {
-				deleteSegments(o.cs.Name, h[ManifestHeader])
+				if err := deleteSegments(o.cs.Name, h[ManifestHeader]); err != nil {
+					return nil, err
+				}
+
 			}
 		}
 		headers := map[string]string{AutoContent: "true"}
