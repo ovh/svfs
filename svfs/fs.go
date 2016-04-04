@@ -10,7 +10,7 @@ import (
 
 var (
 	SwiftConnection *swift.Connection
-	Version         string = "0.5.0"
+	Version         string = "0.5.1"
 	UserAgent       string = "svfs/" + Version
 	DefaultUID      uint64 = 0
 	DefaultGID      uint64 = 0
