@@ -1,6 +1,7 @@
 package svfs
 
 import (
+	"fmt"
 	"time"
 
 	"bazil.org/fuse/fs"
@@ -40,6 +41,9 @@ func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) erro
 	DirectoryLister = &DirLister{concurrency: conf.MaxReaddirConcurrency}
 	SwiftConnection.ConnectTimeout = conf.ConnectTimeout
 	SegmentSize = conf.SegmentSizeMB * (1 << 20)
+	if SegmentSize > 5*(1<<30) {
+		return fmt.Errorf("Segment size can't exceed 5 GB")
+	}
 	swift.DefaultUserAgent = UserAgent
 
 	if HubicAuthorization != "" && HubicRefreshToken != "" {
