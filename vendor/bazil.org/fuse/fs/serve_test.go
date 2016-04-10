@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path"
 	"runtime"
 	"strings"
@@ -308,8 +307,8 @@ func testReadAll(t *testing.T, path string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(data[:n]) != hi {
-		t.Errorf("readAll = %q, want %q", data, hi)
+	if g, e := string(data[:n]), hi; g != e {
+		t.Errorf("readAll = %q, want %q", g, e)
 	}
 }
 
@@ -634,7 +633,6 @@ func (f *mkdir1) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, er
 }
 
 func TestMkdir(t *testing.T) {
-	t.Parallel()
 	f := &mkdir1{}
 	mnt, err := fstestutil.MountedT(t, fstestutil.SimpleFS{f}, nil)
 	if err != nil {
@@ -686,7 +684,6 @@ func (f *create1) Create(ctx context.Context, req *fuse.CreateRequest, resp *fus
 }
 
 func TestCreate(t *testing.T) {
-	t.Parallel()
 	f := &create1{}
 	mnt, err := fstestutil.MountedT(t, fstestutil.SimpleFS{f}, nil)
 	if err != nil {
@@ -960,7 +957,6 @@ func (f *mknod1) Mknod(ctx context.Context, r *fuse.MknodRequest) (fs.Node, erro
 }
 
 func TestMknod(t *testing.T) {
-	t.Parallel()
 	if os.Getuid() != 0 {
 		t.Skip("skipping unless root")
 	}
@@ -1057,7 +1053,38 @@ func (it *interrupt) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse
 	default:
 	}
 	<-ctx.Done()
-	return fuse.EINTR
+	return ctx.Err()
+}
+
+func helperInterrupt() {
+	log.SetPrefix("interrupt child: ")
+	log.SetFlags(0)
+
+	log.Printf("starting...")
+
+	f, err := os.Open("child")
+	if err != nil {
+		log.Fatalf("cannot open file: %v", err)
+	}
+	defer f.Close()
+
+	log.Printf("reading...")
+	buf := make([]byte, 4096)
+	n, err := syscall.Read(int(f.Fd()), buf)
+	switch err {
+	case nil:
+		log.Fatalf("read: expected error, got data: %q", buf[:n])
+	case syscall.EINTR:
+		log.Printf("read: saw EINTR, all good")
+	default:
+		log.Fatalf("read: wrong error: %v", err)
+	}
+
+	log.Printf("exiting...")
+}
+
+func init() {
+	childHelpers["interrupt"] = helperInterrupt
 }
 
 func TestInterrupt(t *testing.T) {
@@ -1071,50 +1098,96 @@ func TestInterrupt(t *testing.T) {
 	defer mnt.Close()
 
 	// start a subprocess that can hang until signaled
-	cmd := exec.Command("cat", mnt.Dir+"/child")
-
-	err = cmd.Start()
+	child, err := childCmd("interrupt")
 	if err != nil {
-		t.Errorf("interrupt: cannot start cat: %v", err)
+		t.Fatal(err)
+	}
+	child.Dir = mnt.Dir
+
+	if err := child.Start(); err != nil {
+		t.Errorf("cannot start child: %v", err)
 		return
 	}
 
 	// try to clean up if child is still alive when returning
-	defer cmd.Process.Kill()
+	defer child.Process.Kill()
 
 	// wait till we're sure it's hanging in read
 	<-f.hanging
 
-	err = cmd.Process.Signal(os.Interrupt)
+	//	err = child.Process.Signal(os.Interrupt)
+	err = child.Process.Signal(syscall.SIGIO)
 	if err != nil {
-		t.Errorf("interrupt: cannot interrupt cat: %v", err)
+		t.Errorf("cannot interrupt child: %v", err)
 		return
 	}
 
-	p, err := cmd.Process.Wait()
+	p, err := child.Process.Wait()
 	if err != nil {
-		t.Errorf("interrupt: cat bork: %v", err)
+		t.Errorf("child failed: %v", err)
 		return
 	}
 	switch ws := p.Sys().(type) {
 	case syscall.WaitStatus:
 		if ws.CoreDump() {
-			t.Errorf("interrupt: didn't expect cat to dump core: %v", ws)
+			t.Fatalf("interrupt: didn't expect child to dump core: %v", ws)
 		}
-
-		if ws.Exited() {
-			t.Errorf("interrupt: didn't expect cat to exit normally: %v", ws)
+		if ws.Signaled() {
+			t.Fatalf("interrupt: didn't expect child to exit with a signal: %v", ws)
 		}
-
-		if !ws.Signaled() {
-			t.Errorf("interrupt: expected cat to get a signal: %v", ws)
-		} else {
-			if ws.Signal() != os.Interrupt {
-				t.Errorf("interrupt: cat got wrong signal: %v", ws)
-			}
+		if !ws.Exited() {
+			t.Fatalf("interrupt: expected child to exit normally: %v", ws)
+		}
+		if status := ws.ExitStatus(); status != 0 {
+			t.Errorf("interrupt: child failed: exit status %d", status)
 		}
 	default:
 		t.Logf("interrupt: this platform has no test coverage")
+	}
+}
+
+// Test deadline
+
+type deadline struct {
+	fstestutil.File
+}
+
+var _ fs.NodeOpener = (*deadline)(nil)
+
+func (it *deadline) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func TestDeadline(t *testing.T) {
+	t.Parallel()
+	child := &deadline{}
+	config := &fs.Config{
+		WithContext: func(ctx context.Context, req fuse.Request) context.Context {
+			// return a context that has already deadlined
+
+			// Server.serve will cancel the parent context, which will
+			// cancel this one, so discarding cancel here should be
+			// safe.
+			ctx, _ = context.WithDeadline(ctx, time.Unix(0, 0))
+			return ctx
+		},
+	}
+	mnt, err := fstestutil.MountedT(t, fstestutil.SimpleFS{&fstestutil.ChildMap{"child": child}}, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mnt.Close()
+
+	f, err := os.Open(mnt.Dir + "/child")
+	if err == nil {
+		f.Close()
+	}
+
+	// not caused by signal -> should not get EINTR;
+	// context.DeadlineExceeded will be translated into EIO
+	if nerr, ok := err.(*os.PathError); !ok || nerr.Err != syscall.EIO {
+		t.Fatalf("wrong error from deadline open: %T: %v", err, err)
 	}
 }
 
@@ -2631,13 +2704,13 @@ func (contextFile) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.O
 
 func TestContext(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	const input = "kilroy was here"
-	ctx = context.WithValue(ctx, &contextFileSentinel, input)
 	mnt, err := fstestutil.MountedT(t,
 		fstestutil.SimpleFS{&fstestutil.ChildMap{"child": contextFile{}}},
 		&fs.Config{
-			GetContext: func() context.Context { return ctx },
+			WithContext: func(ctx context.Context, req fuse.Request) context.Context {
+				return context.WithValue(ctx, &contextFileSentinel, input)
+			},
 		})
 	if err != nil {
 		t.Fatal(err)
@@ -2650,5 +2723,30 @@ func TestContext(t *testing.T) {
 	}
 	if g, e := string(data), input; g != e {
 		t.Errorf("read wrong data: %q != %q", g, e)
+	}
+}
+
+type goexitFile struct {
+	fstestutil.File
+}
+
+func (goexitFile) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+	log.Println("calling runtime.Goexit...")
+	runtime.Goexit()
+	panic("not reached")
+}
+
+func TestGoexit(t *testing.T) {
+	t.Parallel()
+	mnt, err := fstestutil.MountedT(t,
+		fstestutil.SimpleFS{&fstestutil.ChildMap{"child": goexitFile{}}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mnt.Close()
+
+	_, err = ioutil.ReadFile(mnt.Dir + "/child")
+	if nerr, ok := err.(*os.PathError); !ok || nerr.Err != syscall.EIO {
+		t.Fatalf("wrong error from exiting handler: %T: %v", err, err)
 	}
 }
