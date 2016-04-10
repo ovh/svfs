@@ -14,11 +14,14 @@ if ENV['PATH'].nil?
 end
 
 OPTIONS = {
+    'allow_other'       => '--allow-other',
+    'allow_root'        => '--allow-root',
     'cache_access'      => '--cache-max-access',
     'cache_entries'     => '--cache-max-entries',
     'cache_ttl'         => '--cache-ttl',
     'container'         => '--os-container-name',
     'debug'             => '--debug',
+    'default_perm'      => '--default-permissions',
     'extra_attr'        => '--readdir-extra-attributes',
     'gid'               => '--default-gid',
     'hubic_auth'        => '--hubic-authorization',

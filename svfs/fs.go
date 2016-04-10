@@ -25,6 +25,9 @@ type SVFS struct {
 
 // Config represents SVFS configuration settings.
 type Config struct {
+	MountAllowRoot       bool
+	MountAllowOther      bool
+	MountDefaultPerm     bool
 	Container            string
 	ConnectTimeout       time.Duration
 	ReadAheadSize        uint

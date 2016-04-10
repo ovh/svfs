@@ -40,6 +40,9 @@ func parseFlags(debug *bool, conf *svfs.Config, cconf *svfs.CacheConfig, sc *swi
 	flag.Uint64Var(&svfs.DefaultUID, "default-uid", 0, "Default UID (default 0)")
 	flag.Uint64Var(&svfs.DefaultGID, "default-gid", 0, "Default GID (default 0)")
 	flag.Uint64Var(&svfs.DefaultMode, "default-mode", 0700, "Default permissions")
+	flag.BoolVar(&conf.MountAllowRoot, "allow-root", false, "Fuse allow_root option")
+	flag.BoolVar(&conf.MountAllowOther, "allow-other", true, "Fuse allow_other option")
+	flag.BoolVar(&conf.MountDefaultPerm, "default-permissions", true, "Fuse default_permissions option")
 
 	// Prefetch
 	flag.Uint64Var(&conf.ListConcurrency, "readdir-concurrency", 20, "Directory listing concurrency")
@@ -65,6 +68,28 @@ func parseFlags(debug *bool, conf *svfs.Config, cconf *svfs.CacheConfig, sc *swi
 	}
 
 	flag.Parse()
+}
+
+func mountOptions(device string, conf *svfs.Config) (options []fuse.MountOption) {
+	if conf.MountAllowRoot && conf.MountAllowOther {
+		log.Fatalf("AllowRoot and AllowOther are mutually exclusive")
+	}
+
+	if conf.MountAllowOther {
+		options = append(options, fuse.AllowOther())
+	}
+	if conf.MountAllowRoot {
+		options = append(options, fuse.AllowRoot())
+	}
+	if conf.MountDefaultPerm {
+		options = append(options, fuse.DefaultPermissions())
+	}
+
+	options = append(options, fuse.MaxReadahead(uint32(conf.ReadAheadSize)))
+	options = append(options, fuse.Subtype("svfs"))
+	options = append(options, fuse.FSName(device))
+
+	return options
 }
 
 func setDebug() {
@@ -143,14 +168,7 @@ func main() {
 	mountpoint := os.Args[len(os.Args)-1]
 
 	// Mount SVFS
-	c, err := fuse.Mount(
-		mountpoint,
-		fuse.FSName(device),
-		fuse.Subtype("svfs"),
-		fuse.AllowOther(),
-		fuse.DefaultPermissions(),
-		fuse.MaxReadahead(uint32(conf.ReadAheadSize)),
-	)
+	c, err := fuse.Mount(mountpoint, mountOptions(device, &conf)...)
 	if err != nil {
 		log.Fatal(err)
 	}
