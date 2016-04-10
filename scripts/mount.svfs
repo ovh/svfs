@@ -19,6 +19,7 @@ OPTIONS = {
     'cache_ttl'         => '--cache-ttl',
     'container'         => '--os-container-name',
     'debug'             => '--debug',
+    'extra_attr'        => '--readdir-extra-attributes',
     'gid'               => '--default-gid',
     'hubic_auth'        => '--hubic-authorization',
     'hubic_token'       => '--hubic-refresh-token',

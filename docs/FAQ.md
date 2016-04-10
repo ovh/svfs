@@ -16,27 +16,32 @@ data should be accessed : it should be consistent across operations. If you are
 looking for local speed rates, then this means you are looking for a local
 filesystem and svfs is no more than an easier way to achieve synchronization
 between both since it brings support for usual tools when used with appropriate options
-(for instance `rsync -av -W --inplace --update --progress`). In this case you should
+(for instance `rsync -avW --inplace --no-g --no-o --progress`). In this case you should
 rely on an appropriate, journalized, battle-hardened local filesystem. This is also
 where you should manage ownership, permissions and other ACL/extended attributes
 information, relatively to your local users and groups.
 
 ### Why can't I set uid/guid and permissions ?
 
-Openstack Swift object storage does not handle file ownership or permissions
-in a way which is compatible with POSIX filesystems. Indeed, Swift supports
-ACLs however it can not be converted reliably as file permissions or ownership.
-A basic implementation could use Swift's metadata to make this possible but the
-performance impact would be huge since a request would be necessary for every
-single file within a container and it makes little sense as uid/gid mapping
-can differ between two mountpoints.
+Openstack Swift does not handle file ownership or permissions in a way which is
+familiar to filesystems. It is actually relying on some form of ACLs which can't
+be a good match for filesystem permissions. Also, it has little sense to set
+file ownership or permissions over object storage : there's no such thing as
+uid/gid when you store an object : it's *your* object. These informations come
+from your local filesystem while you are storing data on a remote location.
+Given that, svfs doesn't support setting this information per file but provides
+per mountpoint options.
 
-### Why are creation/access times erroneous ?
+### Why are access/creation/modification times erroneous ?
 
-Openstack Swift only stores the modification time of an object so this
-information won't be available when used as a POSIX filesystem. Again, using
-metadata could solve this issue but the performance impact wouldn't make this
-a worthy tradeoff.
+Openstack Swift generates and stores modification time so that users can't change
+it. In svfs we use metadata to store this information if you supply a specific
+mount option (`extended_attr`). This has a performance impact since fetching
+metadata is only possible by requesting extra details on each node.
+So if you want the best performance, you shouldn't use it. Note that mtime
+can't be set on a directory/container/mountpoint because every change occuring
+within one of this node would trigger too many requests. Usually that's not an
+issue for backup tools as they don't rely on directory metas.
 
 ### Why does an entire tree disappear when I remove the sole object in it ?
 

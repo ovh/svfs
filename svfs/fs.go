@@ -15,6 +15,7 @@ var (
 	DefaultUID      uint64 = 0
 	DefaultGID      uint64 = 0
 	DefaultMode     uint64 = 0700
+	ExtraAttr       bool   = false
 )
 
 // SVFS implements the Swift Virtual File System.
@@ -24,12 +25,12 @@ type SVFS struct {
 
 // Config represents SVFS configuration settings.
 type Config struct {
-	Container             string
-	ConnectTimeout        time.Duration
-	ReadAheadSize         uint
-	SegmentSizeMB         uint64
-	MaxReaddirConcurrency uint64
-	MaxUploadConcurrency  uint64
+	Container            string
+	ConnectTimeout       time.Duration
+	ReadAheadSize        uint
+	SegmentSizeMB        uint64
+	ListConcurrency      uint64
+	MaxUploadConcurrency uint64
 }
 
 // Init sets up the filesystem. It sets configuration settings, starts mandatory
@@ -38,7 +39,8 @@ func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) erro
 	s.conf = conf
 	SwiftConnection = sc
 	DirectoryCache = NewCache(cconf)
-	DirectoryLister = &DirLister{concurrency: conf.MaxReaddirConcurrency}
+	ChangeCache = NewSimpleCache()
+	DirectoryLister = &DirLister{concurrency: conf.ListConcurrency}
 	SwiftConnection.ConnectTimeout = conf.ConnectTimeout
 	SegmentSize = conf.SegmentSizeMB * (1 << 20)
 	if SegmentSize > 5*(1<<30) {

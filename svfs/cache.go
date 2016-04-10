@@ -151,3 +151,40 @@ func (c *Cache) Set(container, path, name string, node Node) {
 	}
 	v.nodes[name] = node
 }
+
+// SimpleCache is a simplistic caching implementation
+// only relying on a hashmap with basic functions.
+type SimpleCache struct {
+	changes map[string]Node
+}
+
+// NewSimpleCache creates a new simplistic cache.
+func NewSimpleCache() *SimpleCache {
+	return &SimpleCache{
+		changes: make(map[string]Node),
+	}
+}
+
+func (c *SimpleCache) key(container, path string) string {
+	return fmt.Sprintf("%s:%s", container, path)
+}
+
+// Add pushes a new cache entry.
+func (c *SimpleCache) Add(container, path string, node Node) {
+	c.changes[c.key(container, path)] = node
+}
+
+// Exist checks whether a cache key exist or not.
+func (c *SimpleCache) Exist(container, path string) bool {
+	return c.changes[c.key(container, path)] != nil
+}
+
+// Get retrieves a cache entry for the given key.
+func (c *SimpleCache) Get(container, path string) Node {
+	return c.changes[c.key(container, path)]
+}
+
+// Remove pops the cache entry at this key.
+func (c *SimpleCache) Remove(container, path string) {
+	delete(c.changes, c.key(container, path))
+}

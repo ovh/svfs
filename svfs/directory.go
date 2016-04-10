@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -26,65 +25,17 @@ var (
 	SubdirRegex      = regexp.MustCompile(".*/.*$")
 	SegmentPathRegex = regexp.MustCompile("^([^/]+)/(.*)$")
 	DirectoryCache   = new(Cache)
+	ChangeCache      = new(SimpleCache)
 	DirectoryLister  = new(DirLister)
 )
-
-// DirLister is a concurrent processor for segmented objects.
-// Its job is to get information about manifests stored within
-// directories.
-type DirLister struct {
-	concurrency uint64
-	taskChan    chan DirListerTask
-}
-
-// DirListerTask represents a manifest ready to be processed by
-// the DirLister. Every task must provide a manifest object and
-// a result channel to which retrieved information will be send.
-type DirListerTask struct {
-	o  *Object
-	rc chan<- *Object
-}
-
-// Start spawns workers waiting for tasks. Once a task comes
-// in the task channel, one worker will process it by opening
-// a connection to swift and asking information about the
-// current manifest. The real size of the object is modified
-// then it sends the modified object into the task result
-// channel.
-func (dl *DirLister) Start() {
-	dl.taskChan = make(chan DirListerTask, dl.concurrency)
-	for i := 0; uint64(i) < dl.concurrency; i++ {
-		go func() {
-			for t := range dl.taskChan {
-				_, h, _ := SwiftConnection.Object(t.o.c.Name, t.o.so.Name)
-				if SegmentPathRegex.Match([]byte(h[ManifestHeader])) {
-					t.o.segmented = true
-				}
-				t.o.so.Bytes, _ = strconv.ParseInt(h["Content-Length"], 10, 64)
-				t.rc <- t.o
-			}
-		}()
-	}
-}
-
-// AddTask asynchronously adds a new task to be processed. It
-// returns immediately with no guarantee that the task has been
-// added to the channel nor retrieved by a worker.
-func (dl *DirLister) AddTask(o *Object, c chan<- *Object) {
-	go func() {
-		dl.taskChan <- DirListerTask{
-			o:  o,
-			rc: c,
-		}
-	}()
-}
 
 // Directory represents a standard directory entry.
 type Directory struct {
 	apex bool
 	name string
 	path string
-	o    *swift.Object
+	so   *swift.Object
+	sh   *swift.Headers
 	c    *swift.Container
 	cs   *swift.Container
 }
@@ -92,14 +43,16 @@ type Directory struct {
 // Attr fills file attributes of a directory within the current context.
 func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Mode = os.ModeDir | os.FileMode(DefaultMode)
-	if d.o != nil {
-		a.Ctime = d.o.LastModified
-		a.Mtime = d.o.LastModified
-		a.Crtime = d.o.LastModified
-	}
 	a.Gid = uint32(DefaultGID)
 	a.Uid = uint32(DefaultUID)
 	a.Size = uint64(4096)
+
+	if d.so != nil {
+		a.Mtime = getMtime(d.so, d.sh)
+		a.Ctime = a.Mtime
+		a.Crtime = a.Mtime
+	}
+
 	return nil
 }
 
@@ -108,41 +61,34 @@ func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
 func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
 	// Create an empty object in swift
 	path := d.path + req.Name
-	headers := map[string]string{AutoContent: "true"}
-	w, err := SwiftConnection.ObjectCreate(d.c.Name, path, false, "", "", headers)
-	if err != nil {
-		return nil, nil, fuse.EIO
-	}
-	if _, err := w.Write([]byte(nil)); err != nil {
-		return nil, nil, fuse.EIO
-	}
-	w.Close()
-
-	// Retrieve it
-	obj, _, err := SwiftConnection.Object(d.c.Name, path)
-	if err != nil {
-		return nil, nil, fuse.EIO
-	}
 
 	// New node
-	node := &Object{
-		name: req.Name,
-		path: path,
-		so:   &obj,
-		c:    d.c,
-		cs:   d.cs,
+	node := &Object{name: req.Name, path: path, c: d.c, cs: d.cs}
+
+	err := SwiftConnection.ObjectPutBytes(node.c.Name, node.path, nil, "")
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Get object handler
-	h, err := node.open(fuse.OpenWriteOnly, &resp.Flags)
+	fh, err := node.open(req.Flags, &resp.Flags)
 	if err != nil {
-		return nil, nil, fuse.EIO
+		return nil, nil, err
 	}
+
+	// Get object info
+	obj, headers, err := SwiftConnection.Object(node.c.Name, node.path)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	node.so = &obj
+	node.sh = &headers
 
 	// Cache it
 	DirectoryCache.Set(d.c.Name, d.path, req.Name, node)
 
-	return node, h, nil
+	return node, fh, nil
 }
 
 // Export gives a direntry for the current directory node.
@@ -158,12 +104,12 @@ func (d *Directory) Export() fuse.Dirent {
 // cache of nodes.
 func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err error) {
 	var (
-		dirs         = make(map[string]bool)
-		largeObjects = make(chan *Object, DirectoryLister.concurrency)
-		count        = 0
+		dirs  = make(map[string]bool)
+		tasks = make(chan Node, DirectoryLister.concurrency)
+		count = 0
 	)
 
-	defer close(largeObjects)
+	defer close(tasks)
 
 	// Cache check
 	if _, nodes := DirectoryCache.GetAll(d.c.Name, d.path); nodes != nil {
@@ -190,76 +136,69 @@ func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, e
 			child    Node
 			o        = object
 			path     = object.Name
-			fileName = strings.TrimPrefix(o.Name, d.path)
+			fileName = strings.TrimSuffix(strings.TrimPrefix(o.Name, d.path), "/")
 		)
 
-		// This is a directory
-		if o.ContentType == DirContentType && o.Name != d.path && !o.PseudoDirectory {
-			if !FolderRegex.Match([]byte(o.Name)) {
+		// This is a standard directory
+		if isDirectory(o, d.path) {
+			if !strings.HasSuffix(o.Name, "/") {
 				path += "/"
-			} else {
-				fileName = fileName[:len(fileName)-1]
 			}
-			child = &Directory{
-				c:    d.c,
-				cs:   d.cs,
-				o:    &o,
-				path: path,
-				name: fileName,
-			}
+			child = &Directory{c: d.c, cs: d.cs, so: &o, sh: &swift.Headers{}, path: path, name: fileName}
 			dirs[fileName] = true
-		} else if o.PseudoDirectory && o.Name != d.path {
-			// This is a pseudo directory. Add it only if the real directory is missing
-			if FolderRegex.Match([]byte(o.Name)) {
-				fileName = fileName[:len(fileName)-1]
-			}
-			if !dirs[fileName] {
-				child = &Directory{
-					c:    d.c,
-					cs:   d.cs,
-					o:    &o,
-					path: o.Name,
-					name: fileName,
-				}
-				dirs[fileName] = true
-			}
-		} else if !FolderRegex.Match([]byte(o.Name)) {
-			// This is a swift object
-			obj := &Object{
-				path: o.Name,
-				name: fileName,
-				c:    d.c,
-				cs:   d.cs,
-				so:   &o,
-				p:    d,
-			}
-
-			// Large object
-			if o.Bytes == 0 &&
-				!o.PseudoDirectory &&
-				o.ContentType != DirContentType {
-				DirectoryLister.AddTask(obj, largeObjects)
-				child = nil
-				count++
-			} else {
-				//Standard object
-				child = obj
-			}
-
+			goto finish
 		}
 
+		// This is a pseudo directory. Add it only if the real directory is missing
+		if isPseudoDirectory(o, d.path) && !dirs[fileName] {
+			child = &Directory{c: d.c, cs: d.cs, so: &o, sh: &swift.Headers{}, path: path, name: fileName}
+			dirs[fileName] = true
+			goto finish
+		}
+
+		// This is a pure swift object
+		if !strings.HasSuffix(o.Name, "/") {
+			child = &Object{path: path, name: fileName, c: d.c, cs: d.cs, so: &o, sh: &swift.Headers{}, p: d}
+
+			// If we are writing to this object at the moment
+			// we don't want to update the cache with this.
+			if ChangeCache.Exist(d.c.Name, path) {
+				child = ChangeCache.Get(d.c.Name, path)
+				goto export
+			}
+
+			// Large objects needs extra information
+			if isLargeObject(&o) {
+				DirectoryLister.AddTask(child, tasks)
+				child = nil
+				count++
+			}
+		}
+
+	finish:
+		// Always fetch extra info if asked
+		if child != nil && ExtraAttr {
+			DirectoryLister.AddTask(child, tasks)
+			child = nil
+			count++
+		}
+
+	export:
+		// Add nodes not requiring extra info
 		if child != nil {
 			direntries = append(direntries, child.Export())
 			children[child.Name()] = child
 		}
+
 	}
 
+	// Wait for directory lister to finish
 	if count > 0 {
 		done := 0
-		for o := range largeObjects {
+		for task := range tasks {
 			done++
-			direntries = append(direntries, o.Export())
-			children[o.name] = o
+			direntries = append(direntries, task.Export())
+			children[task.Name()] = task
 			if done == count {
 				break
 			}
@@ -312,11 +251,12 @@ func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node,
 	node := &Directory{
 		name: req.Name,
 		path: absPath + "/",
-		o: &swift.Object{
+		so: &swift.Object{
 			Name:         absPath,
 			ContentType:  DirContentType,
 			LastModified: time.Now(),
 		},
+		sh: new(swift.Headers),
 		c:  d.c,
 		cs: d.cs,
 	}
@@ -346,7 +286,7 @@ func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 			return fuse.ENOTSUP
 		}
 
-		SwiftConnection.ObjectDelete(dir.c.Name, dir.o.Name)
+		SwiftConnection.ObjectDelete(dir.c.Name, dir.so.Name)
 		if _, found := DirectoryCache.Peek(dir.c.Name, dir.path); found {
 			DirectoryCache.DeleteAll(dir.c.Name, dir.path)
 		}
@@ -378,6 +318,10 @@ func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 		DirectoryCache.Delete(d.c.Name, d.path, req.Name)
 	}
 
+	return nil
+}
+
+func (d *Directory) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fuse.SetattrResponse) error {
 	return nil
 }
 

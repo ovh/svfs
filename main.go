@@ -42,7 +42,8 @@ func parseFlags(debug *bool, conf *svfs.Config, cconf *svfs.CacheConfig, sc *swi
 	flag.Uint64Var(&svfs.DefaultMode, "default-mode", 0700, "Default permissions")
 
 	// Prefetch
-	flag.Uint64Var(&conf.MaxReaddirConcurrency, "readdir-concurrency", 20, "Overall concurrency factor when listing directories")
+	flag.Uint64Var(&conf.ListConcurrency, "readdir-concurrency", 20, "Directory listing concurrency")
+	flag.BoolVar(&svfs.ExtraAttr, "readdir-extra-attributes", false, "Fetch extra attributes")
 	flag.UintVar(&conf.ReadAheadSize, "readahead-size", 131072, "Per file readahead size in bytes")
 
 	// Cache Options

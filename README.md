@@ -73,6 +73,7 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 
 * `readahead_size`: Readahead size in bytes. Default is 128 KB.
 * `readdir`: Overall concurrency factor when listing segmented objects in directories (default is 20).
+* `extra_attr`: Fetch extended attributes (default is false).
 
 #### Cache options
 

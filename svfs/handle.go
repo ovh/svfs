@@ -16,6 +16,8 @@ type ObjectHandle struct {
 	target        *Object
 	rd            io.ReadSeeker
 	wd            io.WriteCloser
+	create        bool
+	truncate      bool
 	wroteSegment  bool
 	segmentID     uint
 	uploaded      uint64
@@ -24,8 +26,14 @@ type ObjectHandle struct {
 }
 
 // Read gets a swift object data for a request within the current context.
-// The request size is always honored.
-func (fh *ObjectHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
+// The request size is always honored. We open the file on the first write.
+func (fh *ObjectHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) (err error) {
+	if fh.rd == nil {
+		fh.rd, _, err = SwiftConnection.ObjectOpen(fh.target.c.Name, fh.target.so.Name, false, nil)
+		if err != nil {
+			return err
+		}
+	}
 	fh.rd.Seek(req.Offset, 0)
 	resp.Data = make([]byte, req.Size)
 	io.ReadFull(fh.rd, resp.Data)
@@ -33,9 +41,6 @@ func (fh *ObjectHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *f
 }
 
 // Release frees the file handle, closing all readers/writers in use.
-// In case we used this file handle to write a large object, it creates
-// the manifest file. Cache is refreshed if the writer was used during
-// the lifetime of this handle.
 func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) error {
 	if fh.rd != nil {
 		if closer, ok := fh.rd.(io.Closer); ok {
@@ -43,24 +48,9 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 		}
 	}
 	if fh.wd != nil {
+		defer fh.target.m.Unlock()
+		ChangeCache.Remove(fh.target.c.Name, fh.target.path)
 		fh.wd.Close()
-		if fh.wroteSegment {
-			// Create the manifest
-			headers := map[string]string{
-				ManifestHeader:   fh.target.cs.Name + "/" + fh.segmentPrefix,
-				"Content-Length": "0",
-				AutoContent:      "true",
-			}
-			SwiftConnection.ObjectDelete(fh.target.c.Name, fh.target.so.Name)
-			manifest, err := SwiftConnection.ObjectCreate(fh.target.c.Name, fh.target.so.Name, false, "", "", headers)
-			if err != nil {
-				return err
-			}
-			fh.target.segmented = true
-			manifest.Write(nil)
-			manifest.Close()
-		}
-		DirectoryCache.Set(fh.target.c.Name, fh.target.path, fh.target.name, fh.target)
 	}
 	return nil
 }
@@ -70,8 +60,30 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 // segment size, then the first object we were writing to is moved
 // to the segment container and named accordingly to DLO conventions.
 // Remaining data will be split into segments sequentially until
-// file handle release is called.
+// file handle release is called. If we are overwriting an object
+// we handle segment deletion, and object creation.
 func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) (err error) {
+	// Truncating the file, first write
+	if !fh.create && !fh.truncate {
+		if fh.target.segmented {
+			err = deleteSegments(fh.target.cs.Name, (*fh.target.sh)[ManifestHeader])
+			if err != nil {
+				return err
+			}
+			fh.target.segmented = false
+		}
+
+		fh.truncate = true
+		headers := map[string]string{AutoContent: "true"}
+		fh.wd, err = SwiftConnection.ObjectCreate(fh.target.c.Name, fh.target.so.Name, false, "", "", headers)
+		fh.target.so.Bytes = 0
+		if err != nil {
+			return err
+		}
+	}
+
+	// Write first segment or file with size smaller than
+	// a segment size
 	if fh.uploaded+uint64(len(req.Data)) <= uint64(SegmentSize) {
 		// File size is less than the size of a segment
 		// or we didn't fill the current segment yet.
@@ -82,24 +94,33 @@ func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp 
 		fh.target.so.Bytes += int64(len(req.Data))
 		goto EndWrite
 	}
+
+	// File size is greater than the size of a segment
+	// Move it to the segment directory and start writing
+	// next segment.
 	if fh.uploaded+uint64(len(req.Data)) > uint64(SegmentSize) {
 		if !fh.wroteSegment {
-			// File size is greater than the size of a segment
-			// Move it to the segment directory and start writing
-			// next segment.
 			fh.wd.Close()
-			fh.wroteSegment = true
 			fh.segmentPrefix = fmt.Sprintf("%s/%d", fh.target.path, time.Now().Unix())
 			fh.segmentPath = segmentPath(fh.segmentPrefix, &fh.segmentID)
-			if err := SwiftConnection.ObjectMove(fh.target.c.Name, fh.target.path, fh.target.cs.Name, fh.segmentPath); err != nil {
+
+			err := SwiftConnection.ObjectMove(fh.target.c.Name, fh.target.path, fh.target.cs.Name, fh.segmentPath)
+			if err != nil {
 				return err
 			}
+
+			fh.wroteSegment = true
+			createManifest(fh.target.c.Name, fh.target.cs.Name+"/"+fh.segmentPrefix, fh.target.path)
+			fh.target.segmented = true
 		}
+
 		fh.wd.Close()
-		fh.wd, err = createAndWriteSegment(fh.target.cs.Name, fh.segmentPrefix, &fh.segmentID, fh.target.so, req.Data, &fh.uploaded)
+		fh.wd, err = initSegment(fh.target.cs.Name, fh.segmentPrefix, &fh.segmentID, fh.target.so, req.Data, &fh.uploaded)
+
 		if err != nil {
 			return err
 		}
+
 		goto EndWrite
 	}
 
