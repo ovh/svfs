@@ -1,17 +1,19 @@
 package svfs
 
-// DirLister is a concurrent processor for segmented objects.
-// Its job is to get information about manifests stored within
-// directories.
-type DirLister struct {
-	concurrency uint64
-	taskChan    chan DirListerTask
+var (
+	ListerConcurrency uint64
+)
+
+// Lister is a concurrent processor of direntries.
+// Its job is to get extra information about files.
+type Lister struct {
+	taskChan chan ListerTask
 }
 
-// DirListerTask represents a manifest ready to be processed by
-// the DirLister. Every task must provide a manifest object and
-// a result channel to which retrieved information will be send.
-type DirListerTask struct {
+// ListerTask represents a manifest ready to be processed by
+// the Lister. Every task must provide a manifest object and
+// a result channel to which retrieved information will be sent.
+type ListerTask struct {
 	n  Node
 	rc chan<- Node
 }
@@ -19,12 +21,10 @@ type DirListerTask struct {
 // Start spawns workers waiting for tasks. Once a task comes
 // in the task channel, one worker will process it by opening
 // a connection to swift and asking information about the
-// current manifest. The real size of the object is modified
-// then it sends the modified object into the task result
-// channel.
-func (dl *DirLister) Start() {
-	dl.taskChan = make(chan DirListerTask, dl.concurrency)
-	for i := 0; uint64(i) < dl.concurrency; i++ {
+// current object.
+func (dl *Lister) Start() {
+	dl.taskChan = make(chan ListerTask, ListerConcurrency)
+	for i := 0; uint64(i) < ListerConcurrency; i++ {
 		go func() {
 			for t := range dl.taskChan {
 				// Standard swift object
@@ -52,9 +52,9 @@ func (dl *DirLister) Start() {
 // AddTask asynchronously adds a new task to be processed. It
 // returns immediately with no guarantee that the task has been
 // added to the channel nor retrieved by a worker.
-func (dl *DirLister) AddTask(n Node, rc chan Node) {
+func (dl *Lister) AddTask(n Node, rc chan Node) {
 	go func() {
-		dl.taskChan <- DirListerTask{
+		dl.taskChan <- ListerTask{
 			n:  n,
 			rc: rc,
 		}

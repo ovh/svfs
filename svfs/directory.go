@@ -24,9 +24,9 @@ var (
 	FolderRegex      = regexp.MustCompile("^.+/$")
 	SubdirRegex      = regexp.MustCompile(".*/.*$")
 	SegmentPathRegex = regexp.MustCompile("^([^/]+)/(.*)$")
-	DirectoryCache   = new(Cache)
-	ChangeCache      = new(SimpleCache)
-	DirectoryLister  = new(DirLister)
+	DirectoryCache   = NewCache()
+	ChangeCache      = NewSimpleCache()
+	DirectoryLister  = new(Lister)
 )
 
 // Directory represents a standard directory entry.
@@ -105,7 +105,7 @@ func (d *Directory) Export() fuse.Dirent {
 func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err error) {
 	var (
 		dirs  = make(map[string]bool)
-		tasks = make(chan Node, DirectoryLister.concurrency)
+		tasks = make(chan Node, ListerConcurrency)
 		count = 0
 	)
 

@@ -48,7 +48,7 @@ func (h *HubicAuth) Request(*swift.Connection) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("User-Agent", swift.DefaultUserAgent)
 	req.Header.Add("Authorization", "Basic "+HubicAuthorization)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
@@ -75,7 +75,7 @@ func (h *HubicAuth) Request(*swift.Connection) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("User-Agent", swift.DefaultUserAgent)
 	req.Header.Add("Authorization", h.apiToken.TokenType+" "+h.apiToken.AccessToken)
 	resp, err := h.client.Do(req)
 	if err != nil {

@@ -5,19 +5,18 @@ import (
 	"time"
 )
 
+// CacheConfig is the cache configuration.
+var (
+	CacheTimeout    time.Duration
+	CacheMaxEntries int64
+	CacheMaxAccess  int64
+)
+
 // Cache holds a map of cache entries. Its size can be configured
 // as well as cache entries access limit and expiration time.
 type Cache struct {
-	config    *CacheConfig
 	content   map[string]*CacheValue
 	nodeCount uint64
-}
-
-// CacheConfig is the cache configuration.
-type CacheConfig struct {
-	Timeout    time.Duration
-	MaxEntries int64
-	MaxAccess  int64
 }
 
 // CacheValue is the representation of a cache entry.
@@ -34,9 +33,8 @@ type CacheValue struct {
 }
 
 // NewCache creates a new cache
-func NewCache(cconf *CacheConfig) *Cache {
+func NewCache() *Cache {
 	return &Cache{
-		config:  cconf,
 		content: make(map[string]*CacheValue),
 	}
 }
@@ -55,9 +53,9 @@ func (c *Cache) AddAll(container, path string, node Node, nodes map[string]Node)
 		nodes: nodes,
 	}
 
-	if !(c.config.MaxEntries < 0) &&
-		(c.nodeCount+uint64(len(nodes)) >= uint64(c.config.MaxEntries)) ||
-		c.config.MaxAccess == 0 {
+	if !(CacheMaxEntries < 0) &&
+		(c.nodeCount+uint64(len(nodes)) >= uint64(CacheMaxEntries)) ||
+		CacheMaxAccess == 0 {
 		entry.temporary = true
 	} else {
 		c.nodeCount += uint64(len(nodes))
@@ -110,13 +108,13 @@ func (c *Cache) GetAll(container, path string) (Node, map[string]Node) {
 	v.accessCount++
 
 	// Found but expired
-	if time.Now().After(v.date.Add(c.config.Timeout)) {
+	if time.Now().After(v.date.Add(CacheTimeout)) {
 		defer c.DeleteAll(container, path)
 		return nil, nil
 	}
 
 	if v.temporary ||
-		(!(c.config.MaxAccess < 0) && v.accessCount == uint64(c.config.MaxAccess)) {
+		(!(CacheMaxAccess < 0) && v.accessCount == uint64(CacheMaxAccess)) {
 		defer c.DeleteAll(container, path)
 	}
 
@@ -135,7 +133,7 @@ func (c *Cache) Peek(container, path string) (Node, bool) {
 	}
 
 	// Found but expired
-	if time.Now().After(v.date.Add(c.config.Timeout)) {
+	if time.Now().After(v.date.Add(CacheTimeout)) {
 		return nil, false
 	}
 

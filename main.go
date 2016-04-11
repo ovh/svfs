@@ -18,19 +18,20 @@ import (
 	fusefs "bazil.org/fuse/fs"
 )
 
-func parseFlags(debug *bool, conf *svfs.Config, cconf *svfs.CacheConfig, sc *swift.Connection, profAddr, cpuProf, memProf *string) {
+func parseFlags(debug *bool, profAddr, cpuProf, memProf *string) {
 	// Swift options
-	flag.StringVar(&sc.AuthUrl, "os-auth-url", "https://auth.cloud.ovh.net/v2.0", "Authentication URL")
-	flag.StringVar(&conf.Container, "os-container-name", "", "Container name")
-	flag.StringVar(&sc.AuthToken, "os-auth-token", "", "Authentication token")
-	flag.StringVar(&sc.ApiKey, "os-password", "", "User password")
-	flag.StringVar(&sc.UserName, "os-username", "", "User name")
-	flag.StringVar(&sc.Region, "os-region-name", "", "Region")
-	flag.StringVar(&sc.StorageUrl, "os-storage-url", "", "Storage URL")
-	flag.StringVar(&sc.Tenant, "os-tenant-name", "", "Tenant name")
-	flag.IntVar(&sc.AuthVersion, "os-auth-version", 0, "Authentication version, 0 = auto")
-	flag.DurationVar(&conf.ConnectTimeout, "os-connect-timeout", 5*time.Minute, "Swift connection timeout")
-	flag.Uint64Var(&conf.SegmentSizeMB, "os-segment-size", 256, "Swift segment size in MB")
+	flag.StringVar(&svfs.SwiftConnection.AuthUrl, "os-auth-url", "https://auth.cloud.ovh.net/v2.0", "Authentication URL")
+	flag.StringVar(&svfs.TargetContainer, "os-container-name", "", "Container name")
+	flag.StringVar(&svfs.SwiftConnection.AuthToken, "os-auth-token", "", "Authentication token")
+	flag.StringVar(&svfs.SwiftConnection.ApiKey, "os-password", "", "User password")
+	flag.StringVar(&svfs.SwiftConnection.UserName, "os-username", "", "User name")
+	flag.StringVar(&svfs.SwiftConnection.Region, "os-region-name", "", "Region")
+	flag.StringVar(&svfs.SwiftConnection.StorageUrl, "os-storage-url", "", "Storage URL")
+	flag.StringVar(&svfs.SwiftConnection.Tenant, "os-tenant-name", "", "Tenant name")
+	flag.IntVar(&svfs.SwiftConnection.AuthVersion, "os-auth-version", 0, "Authentication version, 0 = auto")
+	flag.DurationVar(&svfs.SwiftConnection.ConnectTimeout, "os-connect-timeout", 5*time.Minute, "Swift connection timeout")
+	flag.Uint64Var(&svfs.SegmentSize, "os-segment-size", 256, "Swift segment size in MB")
+	flag.StringVar(&swift.DefaultUserAgent, "user-agent", "svfs/"+svfs.Version, "Default User-Agent")
 
 	// Hubic
 	flag.StringVar(&svfs.HubicAuthorization, "hubic-authorization", "", "Hubic authorization code")
@@ -40,19 +41,19 @@ func parseFlags(debug *bool, conf *svfs.Config, cconf *svfs.CacheConfig, sc *swi
 	flag.Uint64Var(&svfs.DefaultUID, "default-uid", 0, "Default UID (default 0)")
 	flag.Uint64Var(&svfs.DefaultGID, "default-gid", 0, "Default GID (default 0)")
 	flag.Uint64Var(&svfs.DefaultMode, "default-mode", 0700, "Default permissions")
-	flag.BoolVar(&conf.MountAllowRoot, "allow-root", false, "Fuse allow_root option")
-	flag.BoolVar(&conf.MountAllowOther, "allow-other", true, "Fuse allow_other option")
-	flag.BoolVar(&conf.MountDefaultPerm, "default-permissions", true, "Fuse default_permissions option")
+	flag.BoolVar(&svfs.AllowRoot, "allow-root", false, "Fuse allow_root option")
+	flag.BoolVar(&svfs.AllowOther, "allow-other", true, "Fuse allow_other option")
+	flag.BoolVar(&svfs.DefaultPermissions, "default-permissions", true, "Fuse default_permissions option")
 
 	// Prefetch
-	flag.Uint64Var(&conf.ListConcurrency, "readdir-concurrency", 20, "Directory listing concurrency")
+	flag.Uint64Var(&svfs.ListerConcurrency, "readdir-concurrency", 20, "Directory listing concurrency")
 	flag.BoolVar(&svfs.ExtraAttr, "readdir-extra-attributes", false, "Fetch extra attributes")
-	flag.UintVar(&conf.ReadAheadSize, "readahead-size", 131072, "Per file readahead size in bytes")
+	flag.UintVar(&svfs.ReadAheadSize, "readahead-size", 131072, "Per file readahead size in bytes")
 
 	// Cache Options
-	flag.DurationVar(&cconf.Timeout, "cache-ttl", 1*time.Minute, "Cache timeout")
-	flag.Int64Var(&cconf.MaxEntries, "cache-max-entries", -1, "Maximum overall entries allowed in cache")
-	flag.Int64Var(&cconf.MaxAccess, "cache-max-access", -1, "Maximum access count to cached entries")
+	flag.DurationVar(&svfs.CacheTimeout, "cache-ttl", 1*time.Minute, "Cache timeout")
+	flag.Int64Var(&svfs.CacheMaxEntries, "cache-max-entries", -1, "Maximum overall entries allowed in cache")
+	flag.Int64Var(&svfs.CacheMaxAccess, "cache-max-access", -1, "Maximum access count to cached entries")
 
 	// Debug and profiling
 	log.SetOutput(os.Stdout)
@@ -70,26 +71,33 @@ func parseFlags(debug *bool, conf *svfs.Config, cconf *svfs.CacheConfig, sc *swi
 	flag.Parse()
 }
 
-func mountOptions(device string, conf *svfs.Config) (options []fuse.MountOption) {
-	if conf.MountAllowRoot && conf.MountAllowOther {
-		log.Fatalf("AllowRoot and AllowOther are mutually exclusive")
-	}
-
-	if conf.MountAllowOther {
+func mountOptions(device string) (options []fuse.MountOption) {
+	if svfs.AllowOther {
 		options = append(options, fuse.AllowOther())
 	}
-	if conf.MountAllowRoot {
+	if svfs.AllowRoot {
 		options = append(options, fuse.AllowRoot())
 	}
-	if conf.MountDefaultPerm {
+	if svfs.DefaultPermissions {
 		options = append(options, fuse.DefaultPermissions())
 	}
 
-	options = append(options, fuse.MaxReadahead(uint32(conf.ReadAheadSize)))
+	options = append(options, fuse.MaxReadahead(uint32(svfs.ReadAheadSize)))
 	options = append(options, fuse.Subtype("svfs"))
 	options = append(options, fuse.FSName(device))
 
 	return options
+}
+
+func checkOptions() error {
+	// Convert to MB
+	svfs.SegmentSize *= (1 << 20)
+
+	// Should not exceed swift maximum object size.
+	if svfs.SegmentSize > 5*(1<<30) {
+		return fmt.Errorf("Segment size can't exceed 5 GiB")
+	}
+	return nil
 }
 
 func setDebug() {
@@ -118,25 +126,14 @@ func createMemProf(memProf string) {
 func main() {
 	var (
 		debug    bool
-		fs       = &svfs.SVFS{}
-		sc       = swift.Connection{}
+		fs       svfs.SVFS
 		srv      *fusefs.Server
-		conf     = svfs.Config{}
-		cconf    = svfs.CacheConfig{}
 		profAddr string
 		cpuProf  string
 		memProf  string
 	)
 
-	parseFlags(
-		&debug,
-		&conf,
-		&cconf,
-		&sc,
-		&profAddr,
-		&cpuProf,
-		&memProf,
-	)
+	parseFlags(&debug, &profAddr, &cpuProf, &memProf)
 
 	// Debug
 	if debug {
@@ -167,21 +164,25 @@ func main() {
 	device := os.Args[len(os.Args)-2]
 	mountpoint := os.Args[len(os.Args)-1]
 
-	// Mount SVFS
-	c, err := fuse.Mount(mountpoint, mountOptions(device, &conf)...)
-	if err != nil {
+	if err := checkOptions(); err != nil {
 		log.Fatal(err)
+	}
+
+	// Mount SVFS
+	c, err := fuse.Mount(mountpoint, mountOptions(device)...)
+	if err != nil {
+		goto Err
 	}
 	defer c.Close()
 
 	// Initialize SVFS
-	if err = fs.Init(&sc, &conf, &cconf); err != nil {
+	if err = fs.Init(); err != nil {
 		goto Err
 	}
 
 	// Serve SVFS
 	srv = fusefs.New(c, nil)
-	if err = srv.Serve(fs); err != nil {
+	if err = srv.Serve(&fs); err != nil {
 		goto Err
 	}
 

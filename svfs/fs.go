@@ -1,55 +1,33 @@
 package svfs
 
 import (
-	"fmt"
-	"time"
-
 	"bazil.org/fuse/fs"
 	"github.com/xlucas/swift"
 )
 
 var (
-	SwiftConnection *swift.Connection
-	Version         string = "0.5.1"
-	UserAgent       string = "svfs/" + Version
-	DefaultUID      uint64 = 0
-	DefaultGID      uint64 = 0
-	DefaultMode     uint64 = 0700
-	ExtraAttr       bool   = false
+	// Swift
+	SwiftConnection = new(swift.Connection)
+	TargetContainer string
+	ExtraAttr       bool
+	SegmentSize     uint64
+
+	// FS
+	AllowRoot          bool
+	AllowOther         bool
+	DefaultGID         uint64
+	DefaultUID         uint64
+	DefaultMode        uint64
+	DefaultPermissions bool
+	ReadAheadSize      uint
 )
 
 // SVFS implements the Swift Virtual File System.
-type SVFS struct {
-	conf *Config
-}
-
-// Config represents SVFS configuration settings.
-type Config struct {
-	MountAllowRoot       bool
-	MountAllowOther      bool
-	MountDefaultPerm     bool
-	Container            string
-	ConnectTimeout       time.Duration
-	ReadAheadSize        uint
-	SegmentSizeMB        uint64
-	ListConcurrency      uint64
-	MaxUploadConcurrency uint64
-}
+type SVFS struct{}
 
 // Init sets up the filesystem. It sets configuration settings, starts mandatory
 // services and make sure authentication in Swift has succeeded.
-func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) error {
-	s.conf = conf
-	SwiftConnection = sc
-	DirectoryCache = NewCache(cconf)
-	ChangeCache = NewSimpleCache()
-	DirectoryLister = &DirLister{concurrency: conf.ListConcurrency}
-	SwiftConnection.ConnectTimeout = conf.ConnectTimeout
-	SegmentSize = conf.SegmentSizeMB * (1 << 20)
-	if SegmentSize > 5*(1<<30) {
-		return fmt.Errorf("Segment size can't exceed 5 GB")
-	}
-	swift.DefaultUserAgent = UserAgent
+func (s *SVFS) Init() error {
 
 	if HubicAuthorization != "" && HubicRefreshToken != "" {
 		SwiftConnection.Auth = new(HubicAuth)
@@ -71,14 +49,14 @@ func (s *SVFS) Init(sc *swift.Connection, conf *Config, cconf *CacheConfig) erro
 // node if a container name have been specified in mount options.
 func (s *SVFS) Root() (fs.Node, error) {
 	// Mount a specific container
-	if s.conf.Container != "" {
-		baseContainer, _, err := SwiftConnection.Container(s.conf.Container)
+	if TargetContainer != "" {
+		baseContainer, _, err := SwiftConnection.Container(TargetContainer)
 		if err != nil {
 			return nil, err
 		}
 
 		// Find segment container too
-		segmentContainerName := s.conf.Container + SegmentContainerSuffix
+		segmentContainerName := TargetContainer + SegmentContainerSuffix
 		segmentContainer, _, err := SwiftConnection.Container(segmentContainerName)
 
 		// Create it if missing

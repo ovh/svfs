@@ -16,10 +16,6 @@ const (
 	ObjectMtimeHeader = ObjectMetaHeader + "Mtime"
 )
 
-var (
-	SegmentSize uint64
-)
-
 // Object is a node representing a swift object.
 // It belongs to a container and segmented objects
 // are bound to a container of segments.
