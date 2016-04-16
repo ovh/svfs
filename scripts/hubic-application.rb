@@ -21,7 +21,6 @@ require 'securerandom'
 
 # Constants
 HUBIC_URI = URI("https://api.hubic.com")
-REDIRECT_URI = CGI.escape('http://localhost/')
 
 # Make sure user has an application ready to use
 print "Did you registered an application under your hubic account ? (y/N) "
@@ -33,6 +32,7 @@ unless STDIN.gets.chomp == 'y'
 end
 
 
+redirect_uri  = [(print " ~> Application redirect URL: "), STDIN.gets.rstrip][1]
 client_id     = [(print " ~> Application client_id: "), STDIN.gets.rstrip][1]
 client_secret = [(print " ~> Application client_secret: "), STDIN.noecho(&:gets).rstrip][1]
 
@@ -49,7 +49,7 @@ print "\n1) Setting scope ... "
 
 uri = "/oauth/auth/"\
   "?client_id=#{client_id}"\
-  "&redirect_uri=#{REDIRECT_URI}"\
+  "&redirect_uri=#{redirect_uri}"\
   "&scope=credentials.r"\
   "&response_type=code"\
   "&state=#{SecureRandom.base64(27)}"
@@ -58,7 +58,7 @@ response = http.get(uri)
 
 if response.code != "200"
   puts "FAILED"
-  abort "Can't access application authorization service (wrong client id ?)"
+  abort "Can't access application authorization service (wrong client id or redirect URL ?)"
 end
 
 /name="oauth" value="(?<oauth_code>\d+)"/ =~ response.body
@@ -112,7 +112,7 @@ uri = "/oauth/token"
 
 data = {
   'code'          => author_code,
-  'redirect_uri'  => REDIRECT_URI,
+  'redirect_uri'  => redirect_uri,
   'grant_type'    => 'authorization_code',
 }
 
