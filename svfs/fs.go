@@ -27,8 +27,11 @@ type SVFS struct{}
 
 // Init sets up the filesystem. It sets configuration settings, starts mandatory
 // services and make sure authentication in Swift has succeeded.
-func (s *SVFS) Init() error {
+func (s *SVFS) Init() (err error) {
+	// Copy storage URL option
+	overloadStorageURL := SwiftConnection.StorageUrl
 
+	// Hubic special authentication
 	if HubicAuthorization != "" && HubicRefreshToken != "" {
 		SwiftConnection.Auth = new(HubicAuth)
 	}
@@ -38,10 +41,16 @@ func (s *SVFS) Init() error {
 
 	// Authenticate if we don't have a token and storage URL
 	if !SwiftConnection.Authenticated() {
-		return SwiftConnection.Authenticate()
+		err = SwiftConnection.Authenticate()
 	}
 
-	return nil
+	// Swift ACL special authentication
+	if overloadStorageURL != "" {
+		SwiftConnection.StorageUrl = overloadStorageURL
+		SwiftConnection.Auth = newSwiftACLAuth(SwiftConnection.Auth, overloadStorageURL)
+	}
+
+	return err
 }
 
 // Root gets the root node of the filesystem. It can either be a fake root node

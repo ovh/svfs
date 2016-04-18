@@ -117,3 +117,21 @@ func writeSegmentData(fh *swift.ObjectCreateFile, t *swift.Object, data []byte, 
 	*uploaded += uint64(len(data))
 	return err
 }
+
+type swiftACLAuth struct {
+	swift.Authenticator
+	storageURL string
+}
+
+func newSwiftACLAuth(baseAuth swift.Authenticator, storageURL string) *swiftACLAuth {
+	return &swiftACLAuth{
+		Authenticator: baseAuth,
+		storageURL:    storageURL,
+	}
+}
+
+func (a *swiftACLAuth) StorageURL(Internal bool) string {
+	return a.storageURL
+}
+
+var _ swift.Authenticator = (*swiftACLAuth)(nil)

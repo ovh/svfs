@@ -47,11 +47,12 @@ svfs --os-username=.. --os-password=.. ... myName /mountpoint &
 * `password`: your keystone password.
 * `tenant`: your project name.
 * `region`: the region where your tenant is.
-* `version`: authentication version (0 means auto-discovery which is the default).
+* `version`: authentication version (`0` means auto-discovery which is the default).
+* `storage_url`: the storage endpoint holding your data.
+* `token`: a valid token.
 
-In case you already have a token and storage URL, you can also use (while the token is still valid) :
-* `storage_url`: the URL to your data.
-* `token`: your token.
+Options `region`, `version`, `storage_url` and `token` are guessed during authentication if
+not provided.
 
 #### Hubic options
 
@@ -96,7 +97,6 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 * `profile_addr`: Golang profiling information will be served at this address (`ip:port`) if set.
 * `profile_cpu`: Golang CPU profiling information will be stored to this file if set.
 * `profile_ram`: Golang RAM profiling information will be stored to this file if set.
-
 
 #### Performance options
 * `go_gc`: set garbage collection target percentage. A garbage collection is triggered when the
