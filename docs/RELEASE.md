@@ -1,10 +1,9 @@
 # Changelog
 
-### IMPROVEMENT :
-- [#33] When uploading objects, auto-detect `content-type` header from file suffix.
-- [#35] Support for opening a file with an offset (make svfs usable with file browsers,
-allow media streaming, etc).
+### FEATURES :
+- [#41] Support for standard fuse permission options.
+- [#42] Support Swift ACL.
+- [#43] Support modification time change.
 
-### BUGFIXES :
-- [#37] Segments not removed in certain cases due to bulk-delete.
-- [#38] Don't allow segment size greater than Swift's maximum object size.
+### BUGFIX :
+- [#47] `hubic-application` only works when redirect URL is `http://localhost/`.
