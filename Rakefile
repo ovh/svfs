@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'rake/testtask'
-require_relative 'scripts/package.rb'
+require_relative 'scripts/package'
 
 package = {
   :name       => 'svfs',

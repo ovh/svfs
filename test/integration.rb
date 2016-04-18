@@ -4,13 +4,14 @@ require 'securerandom'
 require 'tempfile'
 require 'test/unit'
 
-TEMP_PREFIX = 'svfs-test.'
+TEMP_PREFIX = 'svfs-test'
 
 class TestIntegration < Test::Unit::TestCase
 
   def setup
     @mountpoint = ENV['TEST_MOUNTPOINT']
-    @new_name = "#{@mountpoint}/#{SecureRandom.hex}"
+    @old_name = "#{@mountpoint}/#{TEMP_PREFIX}.#{SecureRandom.hex}"
+    @new_name = "#{@mountpoint}/#{TEMP_PREFIX}.#{SecureRandom.hex}"
   end
 
   # This test :
@@ -19,9 +20,9 @@ class TestIntegration < Test::Unit::TestCase
   # - renames this file to somehting else (random)
   # - removes the new named file
   def test_empty_file
-    file = Tempfile.new(TEMP_PREFIX, @mountpoint)
+    file = File.open(@old_name, "w")
     file.close()
-    File.rename(file.path, @new_name)
+    File.rename(@old_name, @new_name)
     File.delete(@new_name)
   end
 
@@ -32,16 +33,14 @@ class TestIntegration < Test::Unit::TestCase
   # - renames this file to somehting else (random)
   # - removes the new named file
   def test_standard_file
-    file = Tempfile.new(TEMP_PREFIX, @mountpoint)
-
-    ENV['TEST_NSEG_SIZE'].to_i.times do |iter|
-      file.write(SecureRandom.random_bytes(2**20))
+    File.open(@old_name, "w") do |f|
+      ENV['TEST_NSEG_SIZE'].to_i.times do |iter|
+        f.write(SecureRandom.random_bytes(2**20))
+      end
+      assert_equal(f.size, (2**20)*ENV['TEST_NSEG_SIZE'].to_i, "Wrong file size")
     end
 
-    assert_equal(file.size, (2**20)*ENV['TEST_NSEG_SIZE'].to_i, "Wrong file size")
-
-    file.close()
-    File.rename(file.path, @new_name)
+    File.rename(@old_name, @new_name)
     File.delete(@new_name)
   end
 
@@ -52,18 +51,15 @@ class TestIntegration < Test::Unit::TestCase
   # - renames this file to somehting else (random)
   # - removes the new named file
   def test_segment
-    file = Tempfile.new(TEMP_PREFIX, @mountpoint)
-
-    ENV['TEST_SEG_SIZE'].to_i.times do |iter|
-      file.write(SecureRandom.random_bytes(2**20))
+    File.open(@old_name, "w") do |f|
+      ENV['TEST_SEG_SIZE'].to_i.times do |iter|
+        f.write(SecureRandom.random_bytes(2**20))
+      end
+      assert_equal(f.size, (2**20)*ENV['TEST_SEG_SIZE'].to_i, "Wrong file size")
     end
 
-    assert_equal(file.size, (2**20)*ENV['TEST_SEG_SIZE'].to_i, "Wrong file size")
-
-    file.close()
     sleep 5
-    File.rename(file.path, @new_name)
-    file.unlink()
+    File.rename(@old_name, @new_name)
     File.delete(@new_name)
   end
 
