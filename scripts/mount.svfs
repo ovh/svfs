@@ -14,6 +14,8 @@ if ENV['PATH'].nil?
 end
 
 OPTIONS = {
+    'aes_chunk'         => '--encryption-chunk',
+    'aes_key'           => '--encryption-key',
     'allow_other'       => '--allow-other',
     'allow_root'        => '--allow-root',
     'cache_access'      => '--cache-max-access',

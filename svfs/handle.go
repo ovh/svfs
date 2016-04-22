@@ -18,6 +18,7 @@ type ObjectHandle struct {
 	wd            io.WriteCloser
 	create        bool
 	truncate      bool
+	nonce         string
 	wroteSegment  bool
 	segmentID     uint
 	uploaded      uint64
@@ -29,7 +30,7 @@ type ObjectHandle struct {
 // The request size is always honored. We open the file on the first write.
 func (fh *ObjectHandle) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) (err error) {
 	if fh.rd == nil {
-		fh.rd, _, err = SwiftConnection.ObjectOpen(fh.target.c.Name, fh.target.so.Name, false, nil)
+		fh.rd, err = newReader(fh)
 		if err != nil {
 			return err
 		}
@@ -49,8 +50,21 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 	}
 	if fh.wd != nil {
 		defer fh.target.m.Unlock()
-		ChangeCache.Remove(fh.target.c.Name, fh.target.path)
 		fh.wd.Close()
+		if Encryption {
+			headers := map[string]string{
+				ObjectSizeHeader:  fmt.Sprintf("%d", fh.target.so.Bytes),
+				ObjectNonceHeader: fh.nonce,
+			}
+			for k, v := range headers {
+				(*fh.target.sh)[k] = v
+			}
+			err := SwiftConnection.ObjectUpdate(fh.target.c.Name, fh.target.path, headers)
+			if err != nil {
+				return fmt.Errorf("Failed to update object crypto headers")
+			}
+		}
+		ChangeCache.Remove(fh.target.c.Name, fh.target.path)
 	}
 	return nil
 }
@@ -72,11 +86,9 @@ func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp 
 			}
 			fh.target.segmented = false
 		}
-
 		fh.truncate = true
-		headers := map[string]string{AutoContent: "true"}
-		fh.wd, err = SwiftConnection.ObjectCreate(fh.target.c.Name, fh.target.so.Name, false, "", "", headers)
 		fh.target.so.Bytes = 0
+		fh.wd, err = newWriter(fh.target.c.Name, fh.target.so.Name, &fh.nonce)
 		if err != nil {
 			return err
 		}
@@ -115,7 +127,7 @@ func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp 
 		}
 
 		fh.wd.Close()
-		fh.wd, err = initSegment(fh.target.cs.Name, fh.segmentPrefix, &fh.segmentID, fh.target.so, req.Data, &fh.uploaded)
+		fh.wd, err = initSegment(fh.target.cs.Name, fh.segmentPrefix, &fh.segmentID, fh.target.so, req.Data, &fh.uploaded, &fh.nonce)
 
 		if err != nil {
 			return err

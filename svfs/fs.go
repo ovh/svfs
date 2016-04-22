@@ -1,6 +1,8 @@
 package svfs
 
 import (
+	"crypto/cipher"
+
 	"bazil.org/fuse/fs"
 	"github.com/xlucas/swift"
 )
@@ -20,6 +22,13 @@ var (
 	DefaultMode        uint64
 	DefaultPermissions bool
 	ReadAheadSize      uint
+
+	// Encryption
+	Cipher     cipher.AEAD
+	Encryption bool
+	KeyFile    string
+	Key        []byte
+	BlockSize  int64
 )
 
 // SVFS implements the Swift Virtual File System.
@@ -48,6 +57,11 @@ func (s *SVFS) Init() (err error) {
 	if overloadStorageURL != "" {
 		SwiftConnection.StorageUrl = overloadStorageURL
 		SwiftConnection.Auth = newSwiftACLAuth(SwiftConnection.Auth, overloadStorageURL)
+	}
+
+	// Data encryption
+	if Encryption {
+		Cipher, err = newCipher(Key)
 	}
 
 	return err

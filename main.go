@@ -4,6 +4,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -30,7 +31,7 @@ func parseFlags(debug *bool, profAddr, cpuProf, memProf *string) {
 	flag.StringVar(&svfs.SwiftConnection.Tenant, "os-tenant-name", "", "Tenant name")
 	flag.IntVar(&svfs.SwiftConnection.AuthVersion, "os-auth-version", 0, "Authentication version, 0 = auto")
 	flag.DurationVar(&svfs.SwiftConnection.ConnectTimeout, "os-connect-timeout", 5*time.Minute, "Swift connection timeout")
-	flag.Uint64Var(&svfs.SegmentSize, "os-segment-size", 256, "Swift segment size in MB")
+	flag.Uint64Var(&svfs.SegmentSize, "os-segment-size", 256, "Swift segment size in MiB")
 	flag.StringVar(&swift.DefaultUserAgent, "user-agent", "svfs/"+svfs.Version, "Default User-Agent")
 
 	// Hubic
@@ -48,7 +49,7 @@ func parseFlags(debug *bool, profAddr, cpuProf, memProf *string) {
 	// Prefetch
 	flag.Uint64Var(&svfs.ListerConcurrency, "readdir-concurrency", 20, "Directory listing concurrency")
 	flag.BoolVar(&svfs.ExtraAttr, "readdir-extra-attributes", false, "Fetch extra attributes")
-	flag.UintVar(&svfs.ReadAheadSize, "readahead-size", 131072, "Per file readahead size in bytes")
+	flag.UintVar(&svfs.ReadAheadSize, "readahead-size", 128, "Per file readahead size in KiB")
 
 	// Cache Options
 	flag.DurationVar(&svfs.CacheTimeout, "cache-ttl", 1*time.Minute, "Cache timeout")
@@ -61,6 +62,10 @@ func parseFlags(debug *bool, profAddr, cpuProf, memProf *string) {
 	flag.StringVar(profAddr, "profile-bind", "", "Profiling information will be served at this address")
 	flag.StringVar(cpuProf, "profile-cpu", "", "Write cpu profile to this file")
 	flag.StringVar(memProf, "profile-ram", "", "Write memory profile to this file")
+
+	// Encryption
+	flag.StringVar(&svfs.KeyFile, "encryption-key", "", "Path to 16, 24 or 32 bytes AES private key file")
+	flag.Int64Var(&svfs.BlockSize, "encryption-chunk", 512, "Encryption block size in KiB")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage : %s [OPTIONS] DEVICE MOUNTPOINT\n\n", os.Args[0])
@@ -89,15 +94,36 @@ func mountOptions(device string) (options []fuse.MountOption) {
 	return options
 }
 
-func checkOptions() error {
-	// Convert to MB
+func checkOptions() (err error) {
+	// Convert units
 	svfs.SegmentSize *= (1 << 20)
+	svfs.BlockSize *= (1 << 10)
+	svfs.ReadAheadSize *= (1 << 10)
 
 	// Should not exceed swift maximum object size.
 	if svfs.SegmentSize > 5*(1<<30) {
 		return fmt.Errorf("Segment size can't exceed 5 GiB")
 	}
-	return nil
+
+	// Read encryption key and check key its size
+	svfs.Encryption = (svfs.KeyFile != "")
+	if svfs.Encryption {
+
+		if !svfs.ExtraAttr {
+			return fmt.Errorf("Encryption requires enabling extra attributes option")
+		}
+
+		svfs.Key, err = ioutil.ReadFile(svfs.KeyFile)
+		if err != nil {
+			return err
+		}
+
+		if len(svfs.Key) != 16 && len(svfs.Key) != 24 && len(svfs.Key) != 32 {
+			return fmt.Errorf("Invalid key size, expecting 16, 24 or 32 bytes key, got %d", len(svfs.Key))
+		}
+
+	}
+	return err
 }
 
 func setDebug() {

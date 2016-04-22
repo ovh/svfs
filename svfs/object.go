@@ -2,6 +2,7 @@ package svfs
 
 import (
 	"os"
+	"strconv"
 	"sync"
 
 	"bazil.org/fuse"
@@ -14,6 +15,8 @@ const (
 	ManifestHeader    = "X-Object-Manifest"
 	ObjectMetaHeader  = "X-Object-Meta-"
 	ObjectMtimeHeader = ObjectMetaHeader + "Mtime"
+	ObjectSizeHeader  = ObjectMetaHeader + "Crypto-Origin-Size"
+	ObjectNonceHeader = ObjectMetaHeader + "Crypto-Nonce"
 )
 
 // Object is a node representing a swift object.
@@ -86,8 +89,7 @@ func (o *Object) open(mode fuse.OpenFlags, flags *fuse.OpenResponseFlags) (oh *O
 
 		// Create new object
 		if oh.create {
-			headers := map[string]string{AutoContent: "true"}
-			oh.wd, err = SwiftConnection.ObjectCreate(o.c.Name, o.path, false, "", "", headers)
+			oh.wd, err = newWriter(oh.target.c.Name, oh.target.path, &oh.nonce)
 		}
 
 		return oh, err
@@ -133,6 +135,10 @@ func (o *Object) Name() string {
 }
 
 func (o *Object) size() uint64 {
+	if Encryption && (*o.sh)[ObjectSizeHeader] != "" {
+		size, _ := strconv.ParseInt((*o.sh)[ObjectSizeHeader], 10, 64)
+		return uint64(size)
+	}
 	return uint64(o.so.Bytes)
 }
 
