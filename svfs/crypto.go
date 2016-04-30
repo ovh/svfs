@@ -84,6 +84,7 @@ func (r *CryptoReadSeeker) Seek(offset int64, whence int) (newPos int64, err err
 	cell := newPos / r.blockSize
 
 	if newPos == r.offset || cell == r.cellID {
+		r.offset = newPos
 		return
 	}
 
