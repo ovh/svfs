@@ -91,6 +91,7 @@ func (r *CryptoReadSeeker) Seek(offset int64, whence int) (newPos int64, err err
 	r.cellID = cell
 	r.offset = newPos
 	pOffset := r.cellID * r.cellSize
+
 	return r.reader.Seek(pOffset, 0)
 }
 
@@ -248,7 +249,7 @@ func (w *CryptoWriter) Write(p []byte) (n int, err error) {
 // data not forming a block with a sufficient size to
 // be handled by previous write requests.
 func (w *CryptoWriter) Close() error {
-	if len(w.block) > 0 {
+	if len(w.block) != 0 {
 		err := w.encrypt(w.block)
 		if err != nil {
 			return err

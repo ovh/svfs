@@ -56,10 +56,12 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 				ObjectSizeHeader:  fmt.Sprintf("%d", fh.target.so.Bytes),
 				ObjectNonceHeader: fh.nonce,
 			}
+			h := fh.target.sh.ObjectMetadata().Headers(ObjectMetaHeader)
 			for k, v := range headers {
-				(*fh.target.sh)[k] = v
+				fh.target.sh[k] = v
+				h[k] = v
 			}
-			err := SwiftConnection.ObjectUpdate(fh.target.c.Name, fh.target.path, headers)
+			err := SwiftConnection.ObjectUpdate(fh.target.c.Name, fh.target.path, h)
 			if err != nil {
 				return fmt.Errorf("Failed to update object crypto headers")
 			}
@@ -80,7 +82,7 @@ func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp 
 	// Truncating the file, first write
 	if !fh.create && !fh.truncate {
 		if fh.target.segmented {
-			err = deleteSegments(fh.target.cs.Name, (*fh.target.sh)[ManifestHeader])
+			err = deleteSegments(fh.target.cs.Name, fh.target.sh[ManifestHeader])
 			if err != nil {
 				return err
 			}

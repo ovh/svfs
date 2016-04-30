@@ -93,13 +93,13 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 * `gid`: default files gid (default is 0 i.e. root).
 * `mode`: default files permissions (default is 0700).
 
-#### Securiy options
+#### Security options
 * `aes_key` : path to a private key. Allowed private key lengths are 16, 24 and 32 bytes.
 Option `extra_attr` should also be enabled or this is an error. AES-GCM uses symetric encryption.
 As such, the provided key will be used for both encryption and decryption operations, ensuring
-a complete control of the process to the end user since absolutely noone but him access to the
-key that was used to secure his data. Data is also authenticated using a randomized nonce,
-ensuring that encrypting two indentical files would result in completely different results.
+a complete control of the process to the end user since absolutely noone but him has access to the
+key that was used to secure the data. Encrypted chunks are also authenticated using a randomized nonce.
+As a consequence, encrypting two indentical files results in storing two different byte streams.
 * `aes_block` : chunk size to use while encrypting data, in KB (default is 512 KB).
 
 #### Debug options

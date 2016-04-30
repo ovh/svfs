@@ -121,7 +121,7 @@ func createSegment(container, prefix string, id *uint, uploaded *uint64, iv *str
 	return
 }
 
-func getMtime(object *swift.Object, headers *swift.Headers) time.Time {
+func getMtime(object *swift.Object, headers swift.Headers) time.Time {
 	if ExtraAttr && headers != nil {
 		if mtime, err := headers.ObjectMetadata().GetModTime(); err == nil {
 			return mtime

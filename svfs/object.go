@@ -26,7 +26,7 @@ type Object struct {
 	name      string
 	path      string
 	so        *swift.Object
-	sh        *swift.Headers
+	sh        swift.Headers
 	c         *swift.Container
 	cs        *swift.Container
 	p         *Directory
@@ -80,7 +80,7 @@ func (o *Object) open(mode fuse.OpenFlags, flags *fuse.OpenResponseFlags) (oh *O
 
 		// Remove segments
 		if o.segmented && oh.create {
-			err = deleteSegments(o.cs.Name, (*o.sh)[ManifestHeader])
+			err = deleteSegments(o.cs.Name, o.sh[ManifestHeader])
 			if err != nil {
 				return oh, err
 			}
@@ -120,9 +120,9 @@ func (o *Object) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fu
 	if !req.Mtime.Equal(getMtime(o.so, o.sh)) {
 		o.m.Lock()
 		defer o.m.Unlock()
-
-		(*o.sh)[ObjectMtimeHeader] = swift.TimeToFloatString(req.Mtime)
-		h := map[string]string{ObjectMtimeHeader: (*o.sh)[ObjectMtimeHeader]}
+		h := o.sh.ObjectMetadata().Headers(ObjectMetaHeader)
+		o.sh[ObjectMtimeHeader] = swift.TimeToFloatString(req.Mtime)
+		h[ObjectMtimeHeader] = o.sh[ObjectMtimeHeader]
 		return SwiftConnection.ObjectUpdate(o.c.Name, o.so.Name, h)
 	}
 
@@ -135,8 +135,8 @@ func (o *Object) Name() string {
 }
 
 func (o *Object) size() uint64 {
-	if Encryption && (*o.sh)[ObjectSizeHeader] != "" {
-		size, _ := strconv.ParseInt((*o.sh)[ObjectSizeHeader], 10, 64)
+	if Encryption && o.sh[ObjectSizeHeader] != "" {
+		size, _ := strconv.ParseInt(o.sh[ObjectSizeHeader], 10, 64)
 		return uint64(size)
 	}
 	return uint64(o.so.Bytes)

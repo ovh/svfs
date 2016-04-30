@@ -33,14 +33,14 @@ func (dl *Lister) Start() {
 					if SegmentPathRegex.Match([]byte(h[ManifestHeader])) {
 						o.segmented = true
 					}
-					o.sh = &h
+					o.sh = h
 					o.so = &ro
 					t.rc <- o
 				}
 				// Directory
 				if d, ok := t.n.(*Directory); ok {
 					rd, h, _ := SwiftConnection.Object(d.c.Name, d.so.Name)
-					d.sh = &h
+					d.sh = h
 					d.so = &rd
 					t.rc <- d
 				}

@@ -35,7 +35,7 @@ type Directory struct {
 	name string
 	path string
 	so   *swift.Object
-	sh   *swift.Headers
+	sh   swift.Headers
 	c    *swift.Container
 	cs   *swift.Container
 }
@@ -83,7 +83,7 @@ func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *f
 	}
 
 	node.so = &obj
-	node.sh = &headers
+	node.sh = headers
 
 	// Cache it
 	DirectoryCache.Set(d.c.Name, d.path, req.Name, node)
@@ -144,21 +144,21 @@ func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, e
 			if !strings.HasSuffix(o.Name, "/") {
 				path += "/"
 			}
-			child = &Directory{c: d.c, cs: d.cs, so: &o, sh: &swift.Headers{}, path: path, name: fileName}
+			child = &Directory{c: d.c, cs: d.cs, so: &o, sh: swift.Headers{}, path: path, name: fileName}
 			dirs[fileName] = true
 			goto finish
 		}
 
 		// This is a pseudo directory. Add it only if the real directory is missing
 		if isPseudoDirectory(o, d.path) && !dirs[fileName] {
-			child = &Directory{c: d.c, cs: d.cs, so: &o, sh: &swift.Headers{}, path: path, name: fileName}
+			child = &Directory{c: d.c, cs: d.cs, so: &o, sh: swift.Headers{}, path: path, name: fileName}
 			dirs[fileName] = true
 			goto finish
 		}
 
 		// This is a pure swift object
 		if !strings.HasSuffix(o.Name, "/") {
-			child = &Object{path: path, name: fileName, c: d.c, cs: d.cs, so: &o, sh: &swift.Headers{}, p: d}
+			child = &Object{path: path, name: fileName, c: d.c, cs: d.cs, so: &o, sh: swift.Headers{}, p: d}
 
 			// If we are writing to this object at the moment
 			// we don't want to update the cache with this.
@@ -256,7 +256,7 @@ func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node,
 			ContentType:  DirContentType,
 			LastModified: time.Now(),
 		},
-		sh: new(swift.Headers),
+		sh: swift.Headers{},
 		c:  d.c,
 		cs: d.cs,
 	}
