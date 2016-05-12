@@ -35,6 +35,13 @@ Using svfs directly :
 svfs --os-username=.. --os-password=.. ... myName /mountpoint &
 ```
 
+With OSX after osxfuse, ruby and pkg installation :
+
+```
+mount_svfs myName /mountpoint -o username=..,password=..,tenant=..,region=..,container=..
+```
+
+
 ## Usage with OVH products
 
 - Usage with OVH Public Cloud Storage is explained [here](docs/PCS.md).
