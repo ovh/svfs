@@ -37,6 +37,8 @@ type Object struct {
 // Attr fills the file attributes for an object node.
 func (o *Object) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	a.Size = o.size()
+	a.BlockSize = uint32(BlockSize)
+	a.Blocks = (a.Size / uint64(a.BlockSize)) * 8
 	a.Mode = os.FileMode(DefaultMode)
 	a.Gid = uint32(DefaultGID)
 	a.Uid = uint32(DefaultUID)

@@ -21,6 +21,7 @@ var (
 	DefaultUID         uint64
 	DefaultMode        uint64
 	DefaultPermissions bool
+	BlockSize          uint
 	ReadAheadSize      uint
 
 	// Encryption
@@ -28,7 +29,7 @@ var (
 	Encryption bool
 	KeyFile    string
 	Key        []byte
-	BlockSize  int64
+	ChunkSize  int64
 )
 
 // SVFS implements the Swift Virtual File System.

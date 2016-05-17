@@ -49,6 +49,7 @@ func parseFlags(debug *bool, profAddr, cpuProf, memProf *string) {
 	// Prefetch
 	flag.Uint64Var(&svfs.ListerConcurrency, "readdir-concurrency", 20, "Directory listing concurrency")
 	flag.BoolVar(&svfs.ExtraAttr, "readdir-extra-attributes", false, "Fetch extra attributes")
+	flag.UintVar(&svfs.BlockSize, "block-size", 4096, "Block size in bytes")
 	flag.UintVar(&svfs.ReadAheadSize, "readahead-size", 128, "Per file readahead size in KiB")
 
 	// Cache Options
@@ -65,7 +66,7 @@ func parseFlags(debug *bool, profAddr, cpuProf, memProf *string) {
 
 	// Encryption
 	flag.StringVar(&svfs.KeyFile, "encryption-key", "", "Path to 16, 24 or 32 bytes AES private key file")
-	flag.Int64Var(&svfs.BlockSize, "encryption-chunk", 512, "Encryption block size in KiB")
+	flag.Int64Var(&svfs.ChunkSize, "encryption-chunk", 512, "Encryption block size in KiB")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage : %s [OPTIONS] DEVICE MOUNTPOINT\n\n", os.Args[0])
@@ -97,7 +98,7 @@ func mountOptions(device string) (options []fuse.MountOption) {
 func checkOptions() (err error) {
 	// Convert units
 	svfs.SegmentSize *= (1 << 20)
-	svfs.BlockSize *= (1 << 10)
+	svfs.ChunkSize *= (1 << 10)
 	svfs.ReadAheadSize *= (1 << 10)
 
 	// Should not exceed swift maximum object size.

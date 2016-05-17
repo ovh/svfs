@@ -18,6 +18,7 @@ OPTIONS = {
     'aes_key'           => '--encryption-key',
     'allow_other'       => '--allow-other',
     'allow_root'        => '--allow-root',
+    'block_size'        => '--block-size',
     'cache_access'      => '--cache-max-access',
     'cache_entries'     => '--cache-max-entries',
     'cache_ttl'         => '--cache-ttl',

@@ -19,7 +19,7 @@ func newReader(fh *ObjectHandle) (io.ReadSeeker, error) {
 	}
 
 	if Encryption && headers[ObjectNonceHeader] != "" {
-		crd := NewCryptoReadSeeker(rd, BlockSize, int64(Cipher.Overhead()))
+		crd := NewCryptoReadSeeker(rd, ChunkSize, int64(Cipher.Overhead()))
 		nonce, err := hex.DecodeString(headers[ObjectNonceHeader])
 		if err != nil {
 			return nil, fmt.Errorf("Failed to decode nonce")
@@ -61,7 +61,7 @@ func newWriter(container, path string, iv *string) (io.WriteCloser, error) {
 	}
 
 	if Encryption {
-		cwd := NewCryptoWriter(wd, BlockSize, int64(Cipher.Overhead()))
+		cwd := NewCryptoWriter(wd, ChunkSize, int64(Cipher.Overhead()))
 		cwd.SetCipher(Cipher, nonce)
 		if *iv == "" {
 			*iv = hex.EncodeToString(cwd.Nonce)

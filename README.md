@@ -81,6 +81,7 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 
 #### Prefetch options
 
+* `block_size`: Filesystem block size in bytes. This is only used to report correct `stat()` results.
 * `readahead_size`: Readahead size in KB. Default is 128 KB.
 * `readdir`: Overall concurrency factor when listing segmented objects in directories (default is 20).
 * `extra_attr`: Fetch extended attributes (default is false). Required with security options.
