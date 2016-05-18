@@ -152,7 +152,7 @@ func (s *SVFS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.S
 	} else {
 		// Else there's theorically no limit to available storage space.
 		used := resp.Blocks
-		resp.Blocks = uint64(1<<64-1) / uint64(resp.Bsize)
+		resp.Blocks = uint64(1<<63-1) / uint64(resp.Bsize)
 		resp.Bavail = resp.Blocks - used
 		resp.Bfree = resp.Bavail
 	}
