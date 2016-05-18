@@ -21,7 +21,6 @@ var SegmentRegex = regexp.MustCompile("^.+_segments$")
 // Root is a fake root node used to hold a list of container nodes.
 type Root struct {
 	*Directory
-	Size uint64
 }
 
 // Create is not supported on a root node.
