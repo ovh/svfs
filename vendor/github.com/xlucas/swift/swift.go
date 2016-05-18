@@ -953,6 +953,7 @@ type Account struct {
 	BytesUsed  int64 // total number of bytes used
 	Containers int64 // total number of containers
 	Objects    int64 // total number of objects
+	Quota      int64 // quota size in bytes
 }
 
 // getInt64FromHeader is a helper function to decode int64 from header.
@@ -993,6 +994,9 @@ func (c *Connection) Account() (info Account, headers Headers, err error) {
 	if info.Objects, err = getInt64FromHeader(resp, "X-Account-Object-Count"); err != nil {
 		return
 	}
+	// Optional headers
+	info.Quota, _ = getInt64FromHeader(resp, "X-Account-Meta-Quota")
+
 	return
 }
 
