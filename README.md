@@ -138,11 +138,14 @@ only if it appears unused for 5 minutes.
 
 **Be aware that SVFS doesn't transform object storage to block storage.**
 
-* SVFS does not support creating, moving or deleting containers.
-* SVFS does not support opening a file in append mode.
-* SVFS does not support moving directories.
-* SVFS does not support SLO (but supports DLO).
-* SVFS does not support per-file uid/gid/permissions (but per-mountpoint).
+SVFS doesn't support :
+
+* Creating, moving or deleting containers.
+* Opening a file in append mode.
+* Moving directories.
+* SLO (but supports DLO).
+* Per-file uid/gid/permissions (but per-mountpoint).
+* Symlink targets across containers (but within the same container).
 
 Take a look at the [docs](docs) for further discussions about SVFS approach.
 

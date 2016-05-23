@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	DirContentType = "application/directory"
-	ObjContentType = "application/octet-stream"
-	AutoContent    = "X-Detect-Content-Type"
+	DirContentType  = "application/directory"
+	ObjContentType  = "application/octet-stream"
+	LinkContentType = "application/link"
+	AutoContent     = "X-Detect-Content-Type"
 )
 
 var (
@@ -139,6 +140,15 @@ func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, e
 			fileName = strings.TrimSuffix(strings.TrimPrefix(o.Name, d.path), "/")
 		)
 
+		// This is a symlink
+		if isSymlink(o, d.path) {
+			child = &Symlink{path: path, name: fileName, c: d.c, so: &o, sh: swift.Headers{}, p: d}
+			DirectoryLister.AddTask(child, tasks)
+			child = nil
+			count++
+			goto finish
+		}
+
 		// This is a standard directory
 		if isDirectory(o, d.path) {
 			if !strings.HasSuffix(o.Name, "/") {
@@ -228,6 +238,9 @@ func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *f
 			return n, nil
 		}
 		if n, ok := item.(*Object); ok {
+			return n, nil
+		}
+		if n, ok := item.(*Symlink); ok {
 			return n, nil
 		}
 	}
@@ -389,11 +402,47 @@ func (d *Directory) Rename(ctx context.Context, req *fuse.RenameRequest, newDir 
 	return fuse.ENOTSUP
 }
 
+// Symlink creates a new symbolic link to the specified target in the current directory.
+func (d *Directory) Symlink(ctx context.Context, req *fuse.SymlinkRequest) (fs.Node, error) {
+	var (
+		absPath = d.path + req.NewName
+	)
+
+	headers := map[string]string{ObjectSymlinkHeader: req.Target}
+
+	// Create the file in swift
+	w, err := SwiftConnection.ObjectCreate(d.c.Name, absPath, false, "", LinkContentType, headers)
+	if err != nil {
+		return nil, err
+	}
+
+	w.Close()
+
+	link := &Symlink{
+		name: req.NewName,
+		path: absPath,
+		sh:   headers,
+		so: &swift.Object{
+			ContentType: LinkContentType,
+			Name:        absPath,
+			Bytes:       0,
+		},
+		p: d,
+		c: d.c,
+	}
+
+	DirectoryCache.Set(d.c.Name, d.path, req.NewName, link)
+
+	return link, nil
+}
+
 var (
-	_ Node           = (*Directory)(nil)
-	_ fs.Node        = (*Directory)(nil)
-	_ fs.NodeCreater = (*Directory)(nil)
-	_ fs.NodeRemover = (*Directory)(nil)
-	_ fs.NodeMkdirer = (*Directory)(nil)
-	_ fs.NodeRenamer = (*Directory)(nil)
+	_ Node             = (*Directory)(nil)
+	_ fs.Node          = (*Directory)(nil)
+	_ fs.NodeCreater   = (*Directory)(nil)
+	_ fs.NodeRemover   = (*Directory)(nil)
+	_ fs.NodeMkdirer   = (*Directory)(nil)
+	_ fs.NodeRenamer   = (*Directory)(nil)
+	_ fs.NodeSetattrer = (*Directory)(nil)
+	_ fs.NodeSymlinker = (*Directory)(nil)
 )

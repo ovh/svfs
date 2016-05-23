@@ -12,11 +12,12 @@ import (
 )
 
 const (
-	ManifestHeader    = "X-Object-Manifest"
-	ObjectMetaHeader  = "X-Object-Meta-"
-	ObjectMtimeHeader = ObjectMetaHeader + "Mtime"
-	ObjectSizeHeader  = ObjectMetaHeader + "Crypto-Origin-Size"
-	ObjectNonceHeader = ObjectMetaHeader + "Crypto-Nonce"
+	ManifestHeader      = "X-Object-Manifest"
+	ObjectMetaHeader    = "X-Object-Meta-"
+	ObjectSymlinkHeader = ObjectMetaHeader + "Symlink-Target"
+	ObjectMtimeHeader   = ObjectMetaHeader + "Mtime"
+	ObjectSizeHeader    = ObjectMetaHeader + "Crypto-Origin-Size"
+	ObjectNonceHeader   = ObjectMetaHeader + "Crypto-Nonce"
 )
 
 // Object is a node representing a swift object.

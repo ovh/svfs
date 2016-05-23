@@ -44,6 +44,13 @@ func (dl *Lister) Start() {
 					d.so = &rd
 					t.rc <- d
 				}
+				// Symlink
+				if s, ok := t.n.(*Symlink); ok {
+					rs, h, _ := SwiftConnection.Object(s.c.Name, s.so.Name)
+					s.sh = h
+					s.so = &rs
+					t.rc <- s
+				}
 			}
 		}()
 	}

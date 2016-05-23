@@ -142,6 +142,10 @@ func isPseudoDirectory(object swift.Object, path string) bool {
 	return object.PseudoDirectory && (object.Name != path)
 }
 
+func isSymlink(object swift.Object, path string) bool {
+	return (object.ContentType == LinkContentType)
+}
+
 func deleteSegments(container, manifestHeader string) error {
 	prefix := strings.TrimPrefix(manifestHeader, container+"/")
 
