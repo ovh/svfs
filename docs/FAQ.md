@@ -2,24 +2,32 @@
 
 ### How does it compare to hubicfuse, cloudfuse, swiftFS ... ?
 
-SVFS supports authentication versions 1/2/3, is stable and fully connected.
-This means svfs won't play with unsafe pointers all the time,
-avoiding segfaults. Also, svfs will make read/write operations atomic :
-it won't return to the caller until data has been read/written from/to the
-network. In other words no local buffering is taking place so i.e. if you
-want to rsync to/from a svfs mountpoint you will get the real progress
-of this operation and not the progress of local buffering. Another consequence
-is that you'll never require space on your local disk to read/write data from
-a file. Standard buffering is done in memory and your data is always a stream
-on the network. This is not the role of a network filesystem to chose how your
-data should be accessed : it should be consistent across operations. If you are
-looking for local speed rates, then this means you are looking for a local
-filesystem and svfs is no more than an easier way to achieve synchronization
-between both since it brings support for usual tools when used with appropriate options
-(for instance `rsync -avW --inplace --no-g --no-o --progress`). In this case you should
-rely on an appropriate, journalized, battle-hardened local filesystem. This is also
-where you should manage ownership, permissions and other ACL/extended attributes
-information, relatively to your local users and groups.
+* SVFS supports authentication versions 1/2/3, is stable and fully connected.
+* SVFS won't play with unsafe pointers all the time, avoiding segfaults.
+* SVFS  will make read/write operations atomic : it won't return to the caller
+until data has been read/written from/to the network.
+* SVFS doesn't use temporary files. An interesting consequence is that you always
+get the actual operation progress with your favorite tools and you don't
+need any extra local space.
+* An SVFS file is always a stream on the network. So you can play media content
+directly as a stream, seek to a specific part in the file and so on. These
+features also work whith encrypted content.
+
+This is not the role of a network filesystem to chose how your data should be
+accessed : it should be consistent across operations. If you are looking for
+local speed rates, then this means you are looking for a local filesystem and
+svfs is no more than an easier way to achieve synchronization between both. In
+this case you should rely on an appropriate, journalized, battle-hardened local
+filesystem. This is also where you should manage ownership, permissions and other
+ACL/extended attributes information, relatively to your local users and groups.
+
+### I got errors using `rsync` with svfs.
+
+By default, `rsync` works with *blocks*. SVFS abstracts *object* storage.
+You need to tell `rsync` to work with entire files :
+- mount your svfs device with `extra_attr=true`
+- `rsync -rtW --inplace --progress <source> <destination>`
+- profit
 
 ### Why can't I set uid/guid and permissions ?
 
@@ -36,7 +44,7 @@ per mountpoint options.
 
 Openstack Swift generates and stores modification time so that users can't change
 it. In svfs we use metadata to store this information if you supply a specific
-mount option (`extended_attr`). This has a performance impact since fetching
+mount option (`extra_attr=true`). This has a performance impact since fetching
 metadata is only possible by requesting extra details on each node.
 So if you want the best performance, you shouldn't use it. Note that mtime
 can't be set on a directory/container/mountpoint because every change occuring
@@ -52,5 +60,4 @@ empty intermediate directories within the object path as well.
 
 ### Does it run on Mac OS X ?
 
-SVFS is tested on Linux, however this should run out of the box under Mac OS X.
-Feedback are welcome on this particular aspect.
+Yes, pick the latest pkg, install it with ruby and osxfuse and there you go !

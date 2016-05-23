@@ -47,6 +47,13 @@ mount_svfs myName /mountpoint -o username=..,password=..,tenant=..,region=..,con
 - Usage with OVH Public Cloud Storage is explained [here](docs/PCS.md).
 - Usage with hubiC is explained [here](docs/HubiC.md).
 
+## FAQ
+
+Got errors using `rsync` with svfs ? Can't change creation time ? Why svfs after all ?
+
+Take a look at the [FAQ](docs/FAQ.md).
+
+
 ## Options
 
 #### Keystone options
