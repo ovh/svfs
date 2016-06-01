@@ -78,13 +78,14 @@ func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *f
 	}
 
 	// Get object info
-	obj, headers, err := SwiftConnection.Object(node.c.Name, node.path)
-	if err != nil {
-		return nil, nil, err
+	obj := &swift.Object{
+		Name:         path,
+		Bytes:        0,
+		LastModified: time.Now(),
 	}
 
-	node.so = &obj
-	node.sh = headers
+	node.so = obj
+	node.sh = map[string]string{}
 
 	// Cache it
 	DirectoryCache.Set(d.c.Name, d.path, req.Name, node)
