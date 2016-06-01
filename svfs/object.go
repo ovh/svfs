@@ -33,6 +33,7 @@ type Object struct {
 	p         *Directory
 	m         sync.Mutex
 	segmented bool
+	writing   bool
 }
 
 // Attr fills the file attributes for an object node.
@@ -121,8 +122,10 @@ func (o *Object) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fu
 
 	// Change mtime
 	if !req.Mtime.Equal(getMtime(o.so, o.sh)) {
-		o.m.Lock()
-		defer o.m.Unlock()
+		if o.writing {
+			o.m.Lock()
+			defer o.m.Unlock()
+		}
 		h := o.sh.ObjectMetadata().Headers(ObjectMetaHeader)
 		o.sh[ObjectMtimeHeader] = swift.TimeToFloatString(req.Mtime)
 		h[ObjectMtimeHeader] = o.sh[ObjectMtimeHeader]

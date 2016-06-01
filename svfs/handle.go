@@ -66,6 +66,7 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 				return fmt.Errorf("Failed to update object crypto headers")
 			}
 		}
+		fh.target.writing = false
 		ChangeCache.Remove(fh.target.c.Name, fh.target.path)
 	}
 	return nil
@@ -79,6 +80,7 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 // file handle release is called. If we are overwriting an object
 // we handle segment deletion, and object creation.
 func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) (err error) {
+	fh.target.writing = true
 	// Truncating the file, first write
 	if !fh.create && !fh.truncate {
 		if fh.target.segmented {
