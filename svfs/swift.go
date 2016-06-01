@@ -18,9 +18,9 @@ func newReader(fh *ObjectHandle) (io.ReadSeeker, error) {
 		return nil, err
 	}
 
-	if Encryption && headers[ObjectNonceHeader] != "" {
+	if Encryption && headers[objectNonceHeader] != "" {
 		crd := NewCryptoReadSeeker(rd, ChunkSize, int64(Cipher.Overhead()))
-		nonce, err := hex.DecodeString(headers[ObjectNonceHeader])
+		nonce, err := hex.DecodeString(headers[objectNonceHeader])
 		if err != nil {
 			return nil, fmt.Errorf("Failed to decode nonce")
 		}
@@ -38,7 +38,7 @@ func newWriter(container, path string, iv *string) (io.WriteCloser, error) {
 		err   error
 	)
 
-	headers := map[string]string{"AutoContent": "true"}
+	headers := map[string]string{"autoContent": "true"}
 
 	if Encryption {
 		if *iv == "" {
@@ -96,14 +96,14 @@ func createContainer(name string) (*swift.Container, error) {
 	return &c, nil
 }
 
-func createManifest(container, segmentsPath, path string) error {
-	headers := map[string]string{
-		ManifestHeader:   segmentsPath,
-		"Content-Length": "0",
-		AutoContent:      "true",
+func createManifest(obj *Object, container, segmentsPath, path string) error {
+	obj.sh = map[string]string{
+		manifestHeader:    segmentsPath,
+		"Content-Length":  "0",
+		autoContentHeader: "true",
 	}
 
-	manifest, err := SwiftConnection.ObjectCreate(container, path, false, "", "", headers)
+	manifest, err := SwiftConnection.ObjectCreate(container, path, false, "", "", obj.sh)
 	if err != nil {
 		return err
 	}
@@ -131,11 +131,11 @@ func getMtime(object *swift.Object, headers swift.Headers) time.Time {
 }
 
 func isDirectory(object swift.Object, path string) bool {
-	return (object.ContentType == DirContentType) && (object.Name != path) && !object.PseudoDirectory
+	return (object.ContentType == dirContentType) && (object.Name != path) && !object.PseudoDirectory
 }
 
 func isLargeObject(object *swift.Object) bool {
-	return (object.Bytes == 0) && !object.PseudoDirectory && (object.ContentType != DirContentType)
+	return (object.Bytes == 0) && !object.PseudoDirectory && (object.ContentType != dirContentType)
 }
 
 func isPseudoDirectory(object swift.Object, path string) bool {
@@ -143,7 +143,7 @@ func isPseudoDirectory(object swift.Object, path string) bool {
 }
 
 func isSymlink(object swift.Object, path string) bool {
-	return (object.ContentType == LinkContentType)
+	return (object.ContentType == linkContentType)
 }
 
 func deleteSegments(container, manifestHeader string) error {

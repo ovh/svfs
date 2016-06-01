@@ -1,7 +1,10 @@
 package svfs
 
 var (
+	// ListerConcurrency represents how many objects can
+	// be fetched concurrently while listing directory content.
 	ListerConcurrency uint64
+	directoryLister   = new(Lister)
 )
 
 // Lister is a concurrent processor of direntries.
@@ -25,34 +28,7 @@ type ListerTask struct {
 func (dl *Lister) Start() {
 	dl.taskChan = make(chan ListerTask, ListerConcurrency)
 	for i := 0; uint64(i) < ListerConcurrency; i++ {
-		go func() {
-			for t := range dl.taskChan {
-				// Standard swift object
-				if o, ok := t.n.(*Object); ok {
-					ro, h, _ := SwiftConnection.Object(o.c.Name, o.so.Name)
-					if SegmentPathRegex.Match([]byte(h[ManifestHeader])) {
-						o.segmented = true
-					}
-					o.sh = h
-					o.so = &ro
-					t.rc <- o
-				}
-				// Directory
-				if d, ok := t.n.(*Directory); ok {
-					rd, h, _ := SwiftConnection.Object(d.c.Name, d.so.Name)
-					d.sh = h
-					d.so = &rd
-					t.rc <- d
-				}
-				// Symlink
-				if s, ok := t.n.(*Symlink); ok {
-					rs, h, _ := SwiftConnection.Object(s.c.Name, s.so.Name)
-					s.sh = h
-					s.so = &rs
-					t.rc <- s
-				}
-			}
-		}()
+		go processTasks(dl.taskChan)
 	}
 }
 
@@ -66,4 +42,34 @@ func (dl *Lister) AddTask(n Node, rc chan Node) {
 			rc: rc,
 		}
 	}()
+}
+
+func processTasks(taskChan chan ListerTask) {
+	for t := range taskChan {
+		// Standard swift object
+		if o, ok := t.n.(*Object); ok {
+			ro, h, _ := SwiftConnection.Object(o.c.Name, o.so.Name)
+			if segmentPathRegex.Match([]byte(h[manifestHeader])) {
+				o.segmented = true
+			}
+			o.sh = h
+			o.so = &ro
+			t.rc <- o
+		}
+		// Directory
+		if d, ok := t.n.(*Directory); ok {
+			rd, h, _ := SwiftConnection.Object(d.c.Name, d.so.Name)
+			d.sh = h
+			d.so = &rd
+			t.rc <- d
+		}
+		// Symlink
+		if s, ok := t.n.(*Symlink); ok {
+			rs, h, _ := SwiftConnection.Object(s.c.Name, s.so.Name)
+			s.sh = h
+			s.so = &rs
+			t.rc <- s
+		}
+	}
+
 }

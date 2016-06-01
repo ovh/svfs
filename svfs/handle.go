@@ -17,7 +17,7 @@ type ObjectHandle struct {
 	rd            io.ReadSeeker
 	wd            io.WriteCloser
 	create        bool
-	truncate      bool
+	truncated     bool
 	nonce         string
 	wroteSegment  bool
 	segmentID     uint
@@ -49,25 +49,17 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 		}
 	}
 	if fh.wd != nil {
-		defer fh.target.m.Unlock()
 		fh.wd.Close()
 		if Encryption {
-			headers := map[string]string{
-				ObjectSizeHeader:  fmt.Sprintf("%d", fh.target.so.Bytes),
-				ObjectNonceHeader: fh.nonce,
-			}
-			h := fh.target.sh.ObjectMetadata().Headers(ObjectMetaHeader)
-			for k, v := range headers {
-				fh.target.sh[k] = v
-				h[k] = v
-			}
-			err := SwiftConnection.ObjectUpdate(fh.target.c.Name, fh.target.path, h)
-			if err != nil {
-				return fmt.Errorf("Failed to update object crypto headers")
+			if err := updateHeaders(fh.target, fh.nonce); err != nil {
+				return err
 			}
 		}
 		fh.target.writing = false
-		ChangeCache.Remove(fh.target.c.Name, fh.target.path)
+	}
+	if changeCache.Exist(fh.target.c.Name, fh.target.path) {
+		defer fh.target.m.Unlock()
+		changeCache.Remove(fh.target.c.Name, fh.target.path)
 	}
 	return nil
 }
@@ -80,29 +72,24 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 // file handle release is called. If we are overwriting an object
 // we handle segment deletion, and object creation.
 func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) (err error) {
-	fh.target.writing = true
-	// Truncating the file, first write
-	if !fh.create && !fh.truncate {
-		if fh.target.segmented {
-			err = deleteSegments(fh.target.cs.Name, fh.target.sh[ManifestHeader])
-			if err != nil {
-				return err
-			}
-			fh.target.segmented = false
-		}
-		fh.truncate = true
-		fh.target.so.Bytes = 0
-		fh.wd, err = newWriter(fh.target.c.Name, fh.target.so.Name, &fh.nonce)
-		if err != nil {
+	// Truncate the file if :
+	// - this is the first write after creation
+	// - this is the first write after opening an existing file
+	if !fh.create && !fh.truncated ||
+		fh.create && !fh.target.writing {
+		if err := fh.truncate(); err != nil {
 			return err
 		}
 	}
 
-	// Write first segment or file with size smaller than
-	// a segment size
+	// Now that we are writing to this file, make sure no lock can
+	// be acquired until :
+	// - all write operations have been processed
+	// - this filehandle has been freed
+	fh.target.writing = true
+
+	// Write first segment or file with size smaller than a segment size.
 	if fh.uploaded+uint64(len(req.Data)) <= uint64(SegmentSize) {
-		// File size is less than the size of a segment
-		// or we didn't fill the current segment yet.
 		if _, err := fh.wd.Write(req.Data); err != nil {
 			return err
 		}
@@ -111,28 +98,21 @@ func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp 
 		goto EndWrite
 	}
 
-	// File size is greater than the size of a segment
-	// Move it to the segment directory and start writing
-	// next segment.
+	// Data written on this writer will be larger than a segment size.
+	// Close current object, move it to the segment container if this
+	// is the first time this happens, then open the next segment and
+	// start writing to it.
 	if fh.uploaded+uint64(len(req.Data)) > uint64(SegmentSize) {
+		// Close current segment
 		if !fh.wroteSegment {
-			fh.wd.Close()
-			fh.segmentPrefix = fmt.Sprintf("%s/%d", fh.target.path, time.Now().Unix())
-			fh.segmentPath = segmentPath(fh.segmentPrefix, &fh.segmentID)
-
-			err := SwiftConnection.ObjectMove(fh.target.c.Name, fh.target.path, fh.target.cs.Name, fh.segmentPath)
-			if err != nil {
+			if err := fh.moveToSegment(); err != nil {
 				return err
 			}
-
-			fh.wroteSegment = true
-			createManifest(fh.target.c.Name, fh.target.cs.Name+"/"+fh.segmentPrefix, fh.target.path)
-			fh.target.segmented = true
 		}
-
 		fh.wd.Close()
-		fh.wd, err = initSegment(fh.target.cs.Name, fh.segmentPrefix, &fh.segmentID, fh.target.so, req.Data, &fh.uploaded, &fh.nonce)
 
+		// Open next segment
+		fh.wd, err = initSegment(fh.target.cs.Name, fh.segmentPrefix, &fh.segmentID, fh.target.so, req.Data, &fh.uploaded, &fh.nonce)
 		if err != nil {
 			return err
 		}
@@ -143,6 +123,47 @@ func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp 
 EndWrite:
 	resp.Size = len(req.Data)
 	return nil
+}
+
+func (fh *ObjectHandle) moveToSegment() error {
+	// Close previous writer.
+	fh.wd.Close()
+
+	// Get the next segment name and path
+	fh.segmentPrefix = fmt.Sprintf("%s/%d", fh.target.path, time.Now().Unix())
+	fh.segmentPath = segmentPath(fh.segmentPrefix, &fh.segmentID)
+
+	// Move data to segment container
+	err := SwiftConnection.ObjectMove(fh.target.c.Name, fh.target.path, fh.target.cs.Name, fh.segmentPath)
+	if err != nil {
+		return err
+	}
+
+	// Create the manifest
+	createManifest(fh.target, fh.target.c.Name, fh.target.cs.Name+"/"+fh.segmentPrefix, fh.target.path)
+	fh.wroteSegment = true
+	fh.target.segmented = true
+
+	return err
+}
+
+func (fh *ObjectHandle) truncate() (err error) {
+	// Remove referenced segments
+	if fh.target.segmented {
+		err = deleteSegments(fh.target.cs.Name, fh.target.sh[manifestHeader])
+		if err != nil {
+			return err
+		}
+		delete(fh.target.sh, manifestHeader)
+		fh.target.segmented = false
+	}
+
+	// Reopen for writing
+	fh.truncated = true
+	fh.target.so.Bytes = 0
+	fh.wd, err = newWriter(fh.target.c.Name, fh.target.so.Name, &fh.nonce)
+
+	return err
 }
 
 var (

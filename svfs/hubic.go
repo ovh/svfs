@@ -12,11 +12,15 @@ import (
 )
 
 const (
+	// HubicEndpoint is the HubiC API URL
 	HubicEndpoint = "https://api.hubic.com"
 )
 
 var (
-	HubicRefreshToken  string
+	// HubicRefreshToken is the OAUTH2 refresh token.
+	HubicRefreshToken string
+	// HubicAuthorization is the basicAuth header used
+	// within requests to Hubic OAUTH2 API.
 	HubicAuthorization string
 )
 

@@ -5,11 +5,15 @@ import (
 	"time"
 )
 
-// CacheConfig is the cache configuration.
 var (
-	CacheTimeout    time.Duration
+	// CacheTimeout represents cache entries timeout.
+	CacheTimeout time.Duration
+	// CacheMaxEntries represents the cache size.
 	CacheMaxEntries int64
-	CacheMaxAccess  int64
+	// CacheMaxAccess represents cache entries max access count.
+	CacheMaxAccess int64
+	changeCache    = NewSimpleCache() // Cache for mutating objects
+	directoryCache = NewCache()       // Cache for directories content
 )
 
 // Cache holds a map of cache entries. Its size can be configured

@@ -8,6 +8,11 @@ import (
 	"io"
 )
 
+const (
+	objectSizeHeader  = objectMetaHeader + "Crypto-Origin-Size"
+	objectNonceHeader = objectMetaHeader + "Crypto-Nonce"
+)
+
 func newCipher(key []byte) (cipher.AEAD, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -22,6 +27,29 @@ func newNonce(cipher cipher.AEAD) ([]byte, error) {
 	return nonce, err
 }
 
+func updateHeaders(object *Object, nonce string) (err error) {
+	// Crypto headers
+	headers := map[string]string{
+		objectSizeHeader:  fmt.Sprintf("%d", object.so.Bytes),
+		objectNonceHeader: nonce,
+	}
+
+	// Update current node headers
+	h := object.sh.ObjectMetadata().Headers(objectMetaHeader)
+	for k, v := range headers {
+		object.sh[k] = v
+		h[k] = v
+	}
+
+	// Update object
+	if SwiftConnection.ObjectUpdate(object.c.Name, object.path, h) != nil {
+		err = fmt.Errorf("Failed to update object crypto headers")
+	}
+
+	return err
+}
+
+// CryptoHandler is the parent struct of all svfs cryptographic handlers.
 type CryptoHandler struct {
 	cipher    cipher.AEAD
 	Nonce     []byte
@@ -167,6 +195,7 @@ func (r *CryptoReadSeeker) Read(p []byte) (n int, err error) {
 	return len(p), err
 }
 
+// Close teardowns the cryptographic reader.
 func (r *CryptoReadSeeker) Close() error {
 	if closer, ok := r.reader.(io.Closer); ok {
 		return closer.Close()
@@ -174,12 +203,16 @@ func (r *CryptoReadSeeker) Close() error {
 	return nil
 }
 
+// CryptoWriter is a cryptographic handler that manages
+// writing encrypted data.
 type CryptoWriter struct {
 	CryptoHandler
 	writer io.WriteCloser
 	block  []byte // Current block
 }
 
+// NewCryptoWriter allocates a new cryptographic writer that will handle
+// writing encrypted data in an existing stream.
 func NewCryptoWriter(writer io.WriteCloser, blockSize, overhead int64) *CryptoWriter {
 	return &CryptoWriter{
 		CryptoHandler: CryptoHandler{

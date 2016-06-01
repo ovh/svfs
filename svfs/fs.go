@@ -11,28 +11,45 @@ import (
 )
 
 var (
-	// Swift
+	// SwiftConnection represents a connection to a swift provider.
+	// It should be ready for authentication before initializing svfs.
 	SwiftConnection = new(swift.Connection)
+	// TargetContainer is an existing container ready to be served.
 	TargetContainer string
-	ExtraAttr       bool
-	SegmentSize     uint64
+	// ExtraAttr represents extra attributes fetching mode activation.
+	ExtraAttr bool
+	// SegmentSize is the size of a segment in bytes.
+	SegmentSize uint64
 
-	// FS
-	AllowRoot          bool
-	AllowOther         bool
-	DefaultGID         uint64
-	DefaultUID         uint64
-	DefaultMode        uint64
+	// AllowRoot represents FUSE allow_root option.
+	AllowRoot bool
+	// AllowOther represents FUSE allow_other option.
+	AllowOther bool
+	// DefaultGID is the gid mapped to svfs files.
+	DefaultGID uint64
+	// DefaultUID is the uid mapped to svfs files.
+	DefaultUID uint64
+	// DefaultMode is the mode mapped to svfs files.
+	DefaultMode uint64
+	// DefaultPermissions are permissions mapped to svfs files.
 	DefaultPermissions bool
-	BlockSize          uint
-	ReadAheadSize      uint
+	// BlockSize is the filesystem block size in bytes.
+	BlockSize uint
+	// ReadAheadSize is the filesystem readahead size in bytes.
+	ReadAheadSize uint
 
-	// Encryption
-	Cipher     cipher.AEAD
+	// Cipher is the block cipher mode providing encryption and
+	// authentication of data.
+	Cipher cipher.AEAD
+	// Encryption represents encryption mode activation.
 	Encryption bool
-	KeyFile    string
-	Key        []byte
-	ChunkSize  int64
+	// KeyFile is the path to a 16/24/32 bytes AES key.
+	KeyFile string
+	// Key is the content of the AES key.
+	Key []byte
+	// ChunkSize is the chunk size used to shift cursor in stream
+	// cipher output.
+	ChunkSize int64
 )
 
 // SVFS implements the Swift Virtual File System.
@@ -50,7 +67,7 @@ func (s *SVFS) Init() (err error) {
 	}
 
 	// Start directory lister
-	DirectoryLister.Start()
+	directoryLister.Start()
 
 	// Authenticate if we don't have a token and storage URL
 	if !SwiftConnection.Authenticated() {
@@ -77,34 +94,8 @@ func (s *SVFS) Init() (err error) {
 func (s *SVFS) Root() (fs.Node, error) {
 	// Mount a specific container
 	if TargetContainer != "" {
-		baseContainer, _, err := SwiftConnection.Container(TargetContainer)
-		if err != nil {
-			return nil, err
-		}
-
-		// Find segment container too
-		segmentContainerName := TargetContainer + SegmentContainerSuffix
-		segmentContainer, _, err := SwiftConnection.Container(segmentContainerName)
-
-		// Create it if missing
-		if err == swift.ContainerNotFound {
-			var container *swift.Container
-			container, err = createContainer(segmentContainerName)
-			segmentContainer = *container
-		}
-		if err != nil && err != swift.ContainerNotFound {
-			return nil, err
-		}
-
-		return &Container{
-			Directory: &Directory{
-				apex: true,
-				c:    &baseContainer,
-				cs:   &segmentContainer,
-			},
-		}, nil
+		return s.rootContainer(TargetContainer)
 	}
-
 	// Mount all containers within an account
 	return &Root{
 		Directory: &Directory{
@@ -113,6 +104,9 @@ func (s *SVFS) Root() (fs.Node, error) {
 	}, nil
 }
 
+// Statfs gets the filesystem meta information. It's notably used to report filesystem metrics
+// to the host. If the target account is using quota it will be reported as the device size.
+// If no quota was found the device size will be equal to the underlying type maximum value.
 func (s *SVFS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.StatfsResponse) error {
 	account, _, err := SwiftConnection.Account()
 	if err != nil {
@@ -127,13 +121,13 @@ func (s *SVFS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.S
 		resp.Files = uint64(account.Objects)
 		resp.Blocks = uint64(account.BytesUsed) / uint64(resp.Bsize)
 	}
-	// Mount a specific container, then get container usage.
+	// Mounting a specific container, then get container usage.
 	if TargetContainer != "" {
 		c, _, err := SwiftConnection.Container(TargetContainer)
 		if err != nil {
 			return err
 		}
-		cs, _, err := SwiftConnection.Container(TargetContainer + SegmentContainerSuffix)
+		cs, _, err := SwiftConnection.Container(TargetContainer + segmentContainerSuffix)
 		if err != nil {
 			return err
 		}
@@ -158,6 +152,33 @@ func (s *SVFS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.S
 	}
 
 	return nil
+}
+
+func (s *SVFS) rootContainer(container string) (fs.Node, error) {
+	baseContainer, _, err := SwiftConnection.Container(container)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find segment container too
+	segmentContainerName := container + segmentContainerSuffix
+	segmentContainer, _, err := SwiftConnection.Container(segmentContainerName)
+
+	// Create it if missing
+	if err == swift.ContainerNotFound {
+		var container *swift.Container
+		container, err = createContainer(segmentContainerName)
+		segmentContainer = *container
+	}
+	if err != nil && err != swift.ContainerNotFound {
+		return nil, err
+	}
+
+	return &Directory{
+		apex: true,
+		c:    &baseContainer,
+		cs:   &segmentContainer,
+	}, nil
 }
 
 var (

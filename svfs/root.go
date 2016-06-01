@@ -13,10 +13,12 @@ import (
 )
 
 const (
-	SegmentContainerSuffix = "_segments"
+	segmentContainerSuffix = "_segments"
 )
 
-var SegmentRegex = regexp.MustCompile("^.+_segments$")
+var (
+	segmentRegex = regexp.MustCompile("^.+" + segmentContainerSuffix + "$")
+)
 
 // Root is a fake root node used to hold a list of container nodes.
 type Root struct {
@@ -53,7 +55,7 @@ func (r *Root) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err er
 	)
 
 	// Cache hit
-	if _, nodes := DirectoryCache.GetAll("", r.path); nodes != nil {
+	if _, nodes := directoryCache.GetAll("", r.path); nodes != nil {
 		for _, node := range nodes {
 			direntries = append(direntries, node.Export())
 		}
@@ -69,12 +71,12 @@ func (r *Root) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err er
 	// Sort base and segment containers
 	for _, segmentContainer := range cs {
 		s := segmentContainer
-		if !SegmentRegex.Match([]byte(s.Name)) {
+		if !segmentRegex.Match([]byte(s.Name)) {
 			baseContainers[s.Name] = &s
 			continue
 		}
-		if SegmentRegex.Match([]byte(s.Name)) {
-			segmentContainers[strings.TrimSuffix(s.Name, SegmentContainerSuffix)] = &s
+		if segmentRegex.Match([]byte(s.Name)) {
+			segmentContainers[strings.TrimSuffix(s.Name, segmentContainerSuffix)] = &s
 			continue
 		}
 	}
@@ -83,26 +85,24 @@ func (r *Root) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err er
 		c := baseContainer
 		// Create segment container if missing
 		if segmentContainers[c.Name] == nil {
-			segmentContainers[c.Name], err = createContainer(c.Name + SegmentContainerSuffix)
+			segmentContainers[c.Name], err = createContainer(c.Name + segmentContainerSuffix)
 			if err != nil {
 				return nil, err
 			}
 		}
 
 		// Register direntries and cache entries
-		child := Container{
-			Directory: &Directory{
-				c:    c,
-				cs:   segmentContainers[c.Name],
-				name: c.Name,
-			},
+		child := &Directory{
+			c:    c,
+			cs:   segmentContainers[c.Name],
+			name: c.Name,
 		}
 
-		children[c.Name] = &child
+		children[c.Name] = child
 		direntries = append(direntries, child.Export())
 	}
 
-	DirectoryCache.AddAll("", r.path, r, children)
+	directoryCache.AddAll("", r.path, r, children)
 
 	return direntries, nil
 }
@@ -111,19 +111,13 @@ func (r *Root) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err er
 // name within the current context.
 func (r *Root) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.LookupResponse) (fs.Node, error) {
 	// Fill cache if expired
-	if _, found := DirectoryCache.Peek("", r.path); !found {
+	if _, found := directoryCache.Peek("", r.path); !found {
 		r.ReadDirAll(ctx)
 	}
 
 	// Find matching child
-	if item := DirectoryCache.Get("", r.path, req.Name); item != nil {
-		if n, ok := item.(*Container); ok {
-			return n, nil
-		}
-		if n, ok := item.(*Directory); ok {
-			return n, nil
-		}
-		if n, ok := item.(*Object); ok {
+	if item := directoryCache.Get("", r.path, req.Name); item != nil {
+		if n, ok := item.(fs.Node); ok {
 			return n, nil
 		}
 	}
