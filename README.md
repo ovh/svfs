@@ -112,7 +112,7 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 * `aes_key` : path to a private key. Allowed private key lengths are 16, 24 and 32 bytes.
 Option `extra_attr` should also be enabled or this is an error. AES-GCM uses symetric encryption.
 As such, the provided key will be used for both encryption and decryption operations, ensuring
-a complete control of the process to the end user since absolutely noone but him has access to the
+a complete control of the process to the end user since absolutely no one but him has access to the
 key that was used to secure the data. Encrypted chunks are also authenticated using a randomized nonce.
 As a consequence, encrypting two indentical files results in storing two different byte streams.
 * `aes_block` : chunk size to use while encrypting data, in KB (default is 512 KB).
