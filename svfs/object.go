@@ -3,7 +3,6 @@ package svfs
 import (
 	"os"
 	"regexp"
-	"strconv"
 	"sync"
 
 	"bazil.org/fuse"
@@ -168,10 +167,6 @@ func (o *Object) removeSegments() error {
 }
 
 func (o *Object) size() uint64 {
-	if Encryption && o.sh[objectSizeHeader] != "" {
-		size, _ := strconv.ParseInt(o.sh[objectSizeHeader], 10, 64)
-		return uint64(size)
-	}
 	return uint64(o.so.Bytes)
 }
 

@@ -4,7 +4,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -64,10 +63,6 @@ func parseFlags(debug *bool, profAddr, cpuProf, memProf *string) {
 	flag.StringVar(cpuProf, "profile-cpu", "", "Write cpu profile to this file")
 	flag.StringVar(memProf, "profile-ram", "", "Write memory profile to this file")
 
-	// Encryption
-	flag.StringVar(&svfs.KeyFile, "encryption-key", "", "Path to 16, 24 or 32 bytes AES private key file")
-	flag.Int64Var(&svfs.ChunkSize, "encryption-chunk", 512, "Encryption block size in KiB")
-
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage : %s [OPTIONS] DEVICE MOUNTPOINT\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Available options :\n")
@@ -95,36 +90,16 @@ func mountOptions(device string) (options []fuse.MountOption) {
 	return options
 }
 
-func checkOptions() (err error) {
-	// Convert units
+func checkOptions() error {
+	// Convert to MB
 	svfs.SegmentSize *= (1 << 20)
-	svfs.ChunkSize *= (1 << 10)
 	svfs.ReadAheadSize *= (1 << 10)
 
 	// Should not exceed swift maximum object size.
 	if svfs.SegmentSize > 5*(1<<30) {
 		return fmt.Errorf("Segment size can't exceed 5 GiB")
 	}
-
-	// Read encryption key and check key its size
-	svfs.Encryption = (svfs.KeyFile != "")
-	if svfs.Encryption {
-
-		if !svfs.ExtraAttr {
-			return fmt.Errorf("Encryption requires enabling extra attributes option")
-		}
-
-		svfs.Key, err = ioutil.ReadFile(svfs.KeyFile)
-		if err != nil {
-			return err
-		}
-
-		if len(svfs.Key) != 16 && len(svfs.Key) != 24 && len(svfs.Key) != 32 {
-			return fmt.Errorf("Invalid key size, expecting 16, 24 or 32 bytes key, got %d", len(svfs.Key))
-		}
-
-	}
-	return err
+	return nil
 }
 
 func setDebug() {

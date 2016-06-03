@@ -1,13 +1,10 @@
 package svfs
 
 import (
-	"crypto/cipher"
-
-	"golang.org/x/net/context"
-
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"github.com/xlucas/swift"
+	"golang.org/x/net/context"
 )
 
 var (
@@ -37,19 +34,6 @@ var (
 	BlockSize uint
 	// ReadAheadSize is the filesystem readahead size in bytes.
 	ReadAheadSize uint
-
-	// Cipher is the block cipher mode providing encryption and
-	// authentication of data.
-	Cipher cipher.AEAD
-	// Encryption represents encryption mode activation.
-	Encryption bool
-	// KeyFile is the path to a 16/24/32 bytes AES key.
-	KeyFile string
-	// Key is the content of the AES key.
-	Key []byte
-	// ChunkSize is the chunk size used to shift cursor in stream
-	// cipher output.
-	ChunkSize int64
 )
 
 // SVFS implements the Swift Virtual File System.
@@ -78,11 +62,6 @@ func (s *SVFS) Init() (err error) {
 	if overloadStorageURL != "" {
 		SwiftConnection.StorageUrl = overloadStorageURL
 		SwiftConnection.Auth = newSwiftACLAuth(SwiftConnection.Auth, overloadStorageURL)
-	}
-
-	// Data encryption
-	if Encryption {
-		Cipher, err = newCipher(Key)
 	}
 
 	return err

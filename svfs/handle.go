@@ -18,7 +18,6 @@ type ObjectHandle struct {
 	wd            io.WriteCloser
 	create        bool
 	truncated     bool
-	nonce         string
 	wroteSegment  bool
 	segmentID     uint
 	uploaded      uint64
@@ -50,11 +49,6 @@ func (fh *ObjectHandle) Release(ctx context.Context, req *fuse.ReleaseRequest) e
 	}
 	if fh.wd != nil {
 		fh.wd.Close()
-		if Encryption {
-			if err := updateHeaders(fh.target, fh.nonce); err != nil {
-				return err
-			}
-		}
 		fh.target.writing = false
 	}
 	if changeCache.Exist(fh.target.c.Name, fh.target.path) {
@@ -112,7 +106,7 @@ func (fh *ObjectHandle) Write(ctx context.Context, req *fuse.WriteRequest, resp 
 		fh.wd.Close()
 
 		// Open next segment
-		fh.wd, err = initSegment(fh.target.cs.Name, fh.segmentPrefix, &fh.segmentID, fh.target.so, req.Data, &fh.uploaded, &fh.nonce)
+		fh.wd, err = initSegment(fh.target.cs.Name, fh.segmentPrefix, &fh.segmentID, fh.target.so, req.Data, &fh.uploaded)
 		if err != nil {
 			return err
 		}
@@ -161,7 +155,7 @@ func (fh *ObjectHandle) truncate() (err error) {
 	// Reopen for writing
 	fh.truncated = true
 	fh.target.so.Bytes = 0
-	fh.wd, err = newWriter(fh.target.c.Name, fh.target.so.Name, &fh.nonce)
+	fh.wd, err = newWriter(fh.target.c.Name, fh.target.so.Name)
 
 	return err
 }

@@ -6,8 +6,8 @@
 
 **SVFS** is a Virtual File System over Openstack Swift built upon fuse. It is compatible with [hubiC](https://hubic.com),
 [OVH Public Cloud Storage](https://www.ovh.com/fr/cloud/storage/object-storage) and basically every endpoint using a standard
-Openstack Swift setup. SVFS brings a layer of abstraction over object storage, making it as accessible and convenient as a filesystem,
-without being intrusive on the way your data is stored. Last but not least, it can encrypt your data using AES-GCM AEAD.
+Openstack Swift setup.  It brings a layer of abstraction over object storage, making it as accessible and convenient as a
+filesystem, without being intrusive on the way your data is stored.
 
 ## Disclaimer
 This is not an official project of the Openstack community.
@@ -92,7 +92,7 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 * `block_size`: Filesystem block size in bytes. This is only used to report correct `stat()` results.
 * `readahead_size`: Readahead size in KB. Default is 128 KB.
 * `readdir`: Overall concurrency factor when listing segmented objects in directories (default is 20).
-* `extra_attr`: Fetch extended attributes (default is false). Required with security options.
+* `extra_attr`: Fetch extended attributes (default is false).
 
 #### Cache options
 
@@ -108,15 +108,6 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 * `uid`: default files uid (default is 0 i.e. root).
 * `gid`: default files gid (default is 0 i.e. root).
 * `mode`: default files permissions (default is 0700).
-
-#### Security options
-* `aes_key` : path to a private key. Allowed private key lengths are 16, 24 and 32 bytes.
-Option `extra_attr` should also be enabled or this is an error. AES-GCM uses symetric encryption.
-As such, the provided key will be used for both encryption and decryption operations, ensuring
-a complete control of the process to the end user since absolutely no one but him has access to the
-key that was used to secure the data. Encrypted chunks are also authenticated using a randomized nonce.
-As a consequence, encrypting two indentical files results in storing two different byte streams.
-* `aes_block` : chunk size to use while encrypting data, in KB (default is 512 KB).
 
 #### Debug options
 

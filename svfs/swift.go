@@ -1,7 +1,6 @@
 package svfs
 
 import (
-	"encoding/hex"
 	"fmt"
 	"io"
 	"strings"
@@ -13,75 +12,21 @@ import (
 )
 
 func newReader(fh *ObjectHandle) (io.ReadSeeker, error) {
-	rd, headers, err := SwiftConnection.ObjectOpen(fh.target.c.Name, fh.target.path, false, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if Encryption && headers[objectNonceHeader] != "" {
-		crd := NewCryptoReadSeeker(rd, ChunkSize, int64(Cipher.Overhead()))
-		nonce, err := hex.DecodeString(headers[objectNonceHeader])
-		if err != nil {
-			return nil, fmt.Errorf("Failed to decode nonce")
-		}
-		crd.SetCipher(Cipher, nonce)
-		fh.nonce = hex.EncodeToString(crd.Nonce)
-		return crd, nil
-	}
-
-	return rd, nil
+	rd, _, err := SwiftConnection.ObjectOpen(fh.target.c.Name, fh.target.path, false, nil)
+	return rd, err
 }
 
-func newWriter(container, path string, iv *string) (io.WriteCloser, error) {
-	var (
-		nonce []byte
-		err   error
-	)
-
+func newWriter(container, path string) (io.WriteCloser, error) {
 	headers := map[string]string{"autoContent": "true"}
-
-	if Encryption {
-		if *iv == "" {
-			nonce, err = newNonce(Cipher)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if *iv != "" {
-			nonce, err = hex.DecodeString(*iv)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	wd, err := SwiftConnection.ObjectCreate(container, path, false, "", "", headers)
-	if err != nil {
-		return nil, err
-	}
-
-	if Encryption {
-		cwd := NewCryptoWriter(wd, ChunkSize, int64(Cipher.Overhead()))
-		cwd.SetCipher(Cipher, nonce)
-		if *iv == "" {
-			*iv = hex.EncodeToString(cwd.Nonce)
-		}
-		return cwd, err
-	}
-
-	return wd, nil
+	return SwiftConnection.ObjectCreate(container, path, false, "", "", headers)
 }
 
-func initSegment(c, prefix string, id *uint, t *swift.Object, d []byte, up *uint64, iv *string) (io.WriteCloser, error) {
-	segment, err := createSegment(c, prefix, id, up, iv)
+func initSegment(c, prefix string, id *uint, t *swift.Object, d []byte, up *uint64) (io.WriteCloser, error) {
+	segment, err := createSegment(c, prefix, id, up)
 	if err != nil {
 		return nil, err
 	}
-	err = writeSegmentData(segment, t, d, up)
-	if err != nil {
-		return nil, err
-	}
-	return segment, nil
+	return segment, writeSegmentData(segment, t, d, up)
 }
 
 func createContainer(name string) (*swift.Container, error) {
@@ -114,11 +59,10 @@ func createManifest(obj *Object, container, segmentsPath, path string) error {
 	return nil
 }
 
-func createSegment(container, prefix string, id *uint, uploaded *uint64, iv *string) (fh io.WriteCloser, err error) {
+func createSegment(container, prefix string, id *uint, uploaded *uint64) (io.WriteCloser, error) {
 	segmentName := segmentPath(prefix, id)
-	fh, err = newWriter(container, segmentName, iv)
 	*uploaded = 0
-	return
+	return newWriter(container, segmentName)
 }
 
 func getMtime(object *swift.Object, headers swift.Headers) time.Time {
