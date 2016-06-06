@@ -283,6 +283,9 @@ func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 	if object, ok := node.(*Object); ok {
 		return d.removeObject(object, req.Name, path)
 	}
+	if symlink, ok := node.(*Symlink); ok {
+		return d.removeSymlink(symlink, req.Name, path)
+	}
 
 	return fuse.ENOTSUP
 }
@@ -352,6 +355,16 @@ func (d *Directory) removeObject(object *Object, name, path string) error {
 	SwiftConnection.ObjectDelete(d.c.Name, path)
 	directoryCache.Delete(d.c.Name, d.path, name)
 
+	return nil
+}
+
+func (d *Directory) removeSymlink(symlink *Symlink, name, path string) error {
+	err := SwiftConnection.ObjectDelete(d.c.Name, path)
+	if err != nil {
+		return err
+	}
+
+	directoryCache.Delete(d.c.Name, d.path, name)
 	return nil
 }
 
