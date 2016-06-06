@@ -25,19 +25,49 @@ type Root struct {
 	*Directory
 }
 
-// Create is not supported on a root node.
+// Create is not supported on a root node since we can only create directories (i.e. containers).
 func (r *Root) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
 	return nil, nil, fuse.ENOTSUP
 }
 
-// Mkdir is not supported on a root node.
+// Mkdir creates a new container.
 func (r *Root) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error) {
-	return nil, fuse.ENOTSUP
+	var (
+		segmentContainer = req.Name + segmentContainerSuffix
+		containers       = make(map[string]*swift.Container)
+	)
+
+	for _, name := range []string{req.Name, segmentContainer} {
+		err := SwiftConnection.ContainerCreate(name, nil)
+		if err != nil {
+			return nil, err
+		}
+		containers[name] = &swift.Container{Name: name}
+	}
+
+	container := &Directory{
+		c:    containers[req.Name],
+		cs:   containers[segmentContainer],
+		name: req.Name,
+	}
+
+	directoryCache.Set("", r.path, req.Name, container)
+
+	return container, nil
 }
 
-// Remove is not supported on a root node.
+// Remove deletes a container.
 func (r *Root) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
-	return fuse.ENOTSUP
+	for _, container := range []string{req.Name, req.Name + segmentContainerSuffix} {
+		err := SwiftConnection.ContainerDelete(container)
+		if err != nil {
+			return err
+		}
+	}
+
+	directoryCache.Delete("", r.path, req.Name)
+
+	return nil
 }
 
 // Rename is not supported on a root node.

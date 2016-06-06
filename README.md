@@ -132,9 +132,9 @@ only if it appears unused for 5 minutes.
 
 SVFS doesn't support :
 
-* Creating, moving or deleting containers.
-* Opening a file in append mode.
+* Opening files in append mode.
 * Moving directories.
+* Renaming containers.
 * SLO (but supports DLO).
 * Per-file uid/gid/permissions (but per-mountpoint).
 * Symlink targets across containers (but within the same container).
