@@ -34,6 +34,8 @@ var (
 	BlockSize uint
 	// ReadAheadSize is the filesystem readahead size in bytes.
 	ReadAheadSize uint
+	// ReadOnly represents the filesystem readonly access mode activation.
+	ReadOnly bool
 )
 
 // SVFS implements the Swift Virtual File System.

@@ -44,6 +44,7 @@ func parseFlags(debug *bool, profAddr, cpuProf, memProf *string) {
 	flag.BoolVar(&svfs.AllowRoot, "allow-root", false, "Fuse allow_root option")
 	flag.BoolVar(&svfs.AllowOther, "allow-other", true, "Fuse allow_other option")
 	flag.BoolVar(&svfs.DefaultPermissions, "default-permissions", true, "Fuse default_permissions option")
+	flag.BoolVar(&svfs.ReadOnly, "read-only", false, "Read only access")
 
 	// Prefetch
 	flag.Uint64Var(&svfs.ListerConcurrency, "readdir-concurrency", 20, "Directory listing concurrency")
@@ -81,6 +82,9 @@ func mountOptions(device string) (options []fuse.MountOption) {
 	}
 	if svfs.DefaultPermissions {
 		options = append(options, fuse.DefaultPermissions())
+	}
+	if svfs.ReadOnly {
+		options = append(options, fuse.ReadOnly())
 	}
 
 	options = append(options, fuse.MaxReadahead(uint32(svfs.ReadAheadSize)))

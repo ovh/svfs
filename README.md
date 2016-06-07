@@ -100,7 +100,7 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 * `cache_entries`: maximum entry count in cache. Default is -1 (unlimited).
 * `cache_ttl`: cache entry timeout before refresh. Default is 1 minute.
 
-#### Ownership options
+#### Access restriction options
 
 * `allow_other`: Bypass `allow_root`.
 * `allow_root`: Restrict access to root and the user mounting the filesystem.
@@ -108,6 +108,7 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 * `uid`: default files uid (default is 0 i.e. root).
 * `gid`: default files gid (default is 0 i.e. root).
 * `mode`: default files permissions (default is 0700).
+* `ro`: set it to true to enable read-only access.
 
 #### Debug options
 
