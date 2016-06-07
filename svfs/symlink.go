@@ -52,6 +52,45 @@ func (s *Symlink) Readlink(ctx context.Context, req *fuse.ReadlinkRequest) (stri
 	return s.sh[objectSymlinkHeader], nil
 }
 
+func (s *Symlink) copy(dir *Directory, name string) (*Symlink, error) {
+	_, err := SwiftConnection.ObjectCopy(s.c.Name, s.path, dir.c.Name, dir.path+name, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	link := *s
+	*link.so = *s.so
+	link.c = dir.c
+	link.p = dir
+	link.name = name
+	link.path = dir.path + name
+
+	directoryCache.Set(dir.c.Name, dir.path, name, &link)
+
+	return &link, nil
+}
+
+func (s *Symlink) delete() error {
+	directoryCache.Delete(s.c.Name, s.p.path, s.name)
+	return SwiftConnection.ObjectDelete(s.c.Name, s.path)
+}
+
+func (s *Symlink) rename(dir *Directory, name string) error {
+	copy, err := s.copy(dir, name)
+	if err != nil {
+		return err
+	}
+
+	err = s.delete()
+	if err != nil {
+		return err
+	}
+
+	*s = *copy
+
+	return nil
+}
+
 var (
 	_ Node              = (*Symlink)(nil)
 	_ fs.Node           = (*Symlink)(nil)

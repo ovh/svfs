@@ -215,6 +215,17 @@ func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, e
 	return direntries, nil
 }
 
+// Link creates a hard link between two nodes.
+func (d *Directory) Link(ctx context.Context, req *fuse.LinkRequest, old fs.Node) (node fs.Node, err error) {
+	if object, ok := old.(*Object); ok {
+		return object.copy(d, req.NewName)
+	}
+	if symlink, ok := old.(*Symlink); ok {
+		return symlink.copy(d, req.NewName)
+	}
+	return nil, fuse.ENOTSUP
+}
+
 // Lookup gets a children node if its name matches the requested direntry name.
 // If the cache is empty for the current directory, it will fill it and try to
 // match the requested direnty after this operation.
@@ -368,8 +379,7 @@ func (d *Directory) removeSymlink(symlink *Symlink, name, path string) error {
 	return nil
 }
 
-// Rename moves a node from its current directory node to a new directory node and updates
-// the cache.
+// Rename moves a node from its current directory to a new directory and updates the cache.
 func (d *Directory) Rename(ctx context.Context, req *fuse.RenameRequest, newDir fs.Node) error {
 	if t, ok := newDir.(*Directory); ok && (t.c.Name == d.c.Name) {
 		// Get object from cache
@@ -377,7 +387,11 @@ func (d *Directory) Rename(ctx context.Context, req *fuse.RenameRequest, newDir 
 
 		// Rename it
 		if oldObject, ok := oldNode.(*Object); ok {
-			return oldObject.rename(t.path, req.NewName)
+			return oldObject.rename(t, req.NewName)
+		}
+
+		if oldSymlink, ok := oldNode.(*Symlink); ok {
+			return oldSymlink.rename(t, req.NewName)
 		}
 	}
 	return fuse.ENOTSUP
@@ -420,6 +434,7 @@ var (
 	_ Node             = (*Directory)(nil)
 	_ fs.Node          = (*Directory)(nil)
 	_ fs.NodeCreater   = (*Directory)(nil)
+	_ fs.NodeLinker    = (*Directory)(nil)
 	_ fs.NodeRemover   = (*Directory)(nil)
 	_ fs.NodeMkdirer   = (*Directory)(nil)
 	_ fs.NodeRenamer   = (*Directory)(nil)

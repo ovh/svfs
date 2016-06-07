@@ -103,6 +103,36 @@ func (o *Object) Name() string {
 	return o.name
 }
 
+func (o *Object) copy(dir *Directory, name string) (copy *Object, err error) {
+	if o.segmented {
+		_, err = SwiftConnection.ManifestCopy(o.c.Name, o.path, dir.c.Name, dir.path+name, nil)
+	} else {
+		_, err = SwiftConnection.ObjectCopy(o.c.Name, o.path, dir.c.Name, dir.path+name, nil)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	object := *o
+	*object.so = *o.so
+	object.c = dir.c
+	object.cs = dir.cs
+	object.p = dir
+	object.name = name
+	object.path = dir.path + name
+	object.so.Name = dir.path + name
+
+	directoryCache.Set(dir.c.Name, dir.path, name, &object)
+
+	return &object, nil
+}
+
+func (o *Object) delete() error {
+	directoryCache.Delete(o.c.Name, o.p.path, o.name)
+	return SwiftConnection.ObjectDelete(o.c.Name, o.path)
+}
+
 func (o *Object) open(mode fuse.OpenFlags, flags *fuse.OpenResponseFlags) (*ObjectHandle, error) {
 	oh := &ObjectHandle{
 		target: o,
@@ -131,28 +161,18 @@ func (o *Object) open(mode fuse.OpenFlags, flags *fuse.OpenResponseFlags) (*Obje
 	return nil, fuse.ENOTSUP
 }
 
-func (o *Object) rename(path, name string) error {
-	newPath := path + name
-
-	if o.segmented {
-		_, err := SwiftConnection.ManifestCopy(o.c.Name, o.path, o.c.Name, newPath, nil)
-		if err != nil {
-			return err
-		}
-		if err := SwiftConnection.ObjectDelete(o.c.Name, o.path); err != nil {
-			return err
-		}
-	} else {
-		err := SwiftConnection.ObjectMove(o.c.Name, o.path, o.c.Name, newPath)
-		if err != nil {
-			return err
-		}
+func (o *Object) rename(dir *Directory, name string) error {
+	copy, err := o.copy(dir, name)
+	if err != nil {
+		return err
 	}
 
-	directoryCache.Delete(o.c.Name, o.path, o.name)
-	o.name = name
-	o.path = newPath
-	directoryCache.Set(o.c.Name, o.path, o.name, o)
+	err = o.delete()
+	if err != nil {
+		return err
+	}
+
+	*o = *copy
 
 	return nil
 }
