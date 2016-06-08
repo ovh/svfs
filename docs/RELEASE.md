@@ -1,6 +1,11 @@
 # Changelog
 
-### BUGFIXES :
+### FEATURES :
 
-- [#65] HTTP 408 response received occasionally after file creation.
-- [#66] Race condition on file attribute change after `open()`.
+- [#68] Support container creation and removal.
+- [#69] Support hard links.
+- [#70] Support read-only access.
+
+### IMPROVEMENT :
+
+- [#71] Support file times set by synchronization clients for hubic.
