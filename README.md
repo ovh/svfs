@@ -74,6 +74,8 @@ not provided.
 #### Hubic options
 
 * `hubic_auth`: hubic authorization token as returned by the `hubic-application` command.
+* `hubic_times` : use file times set by hubic synchronization clients. Option `extra_attr`
+should also be set for this to work.
 * `hubic_token` : hubic refresh token as returned by the `hubic-application` command.
 
 #### Swift options
@@ -92,7 +94,7 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 * `block_size`: Filesystem block size in bytes. This is only used to report correct `stat()` results.
 * `readahead_size`: Readahead size in KB. Default is 128 KB.
 * `readdir`: Overall concurrency factor when listing segmented objects in directories (default is 20).
-* `extra_attr`: Fetch extended attributes (default is false).
+* `extra_attr`: Fetch extended attributes.
 
 #### Cache options
 
@@ -108,11 +110,11 @@ happen when copying non-segmented large files server-side. Default is 5 minutes.
 * `uid`: default files uid (default is 0 i.e. root).
 * `gid`: default files gid (default is 0 i.e. root).
 * `mode`: default files permissions (default is 0700).
-* `ro`: set it to true to enable read-only access.
+* `ro`: enable read-only access.
 
 #### Debug options
 
-* `debug`: set it to true to enable debug log.
+* `debug`: enable debug log.
 * `profile_addr`: Golang profiling information will be served at this address (`ip:port`) if set.
 * `profile_cpu`: Golang CPU profiling information will be stored to this file if set.
 * `profile_ram`: Golang RAM profiling information will be stored to this file if set.

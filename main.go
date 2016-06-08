@@ -36,6 +36,7 @@ func parseFlags(debug *bool, profAddr, cpuProf, memProf *string) {
 	// Hubic
 	flag.StringVar(&svfs.HubicAuthorization, "hubic-authorization", "", "Hubic authorization code")
 	flag.StringVar(&svfs.HubicRefreshToken, "hubic-refresh-token", "", "Hubic refresh token")
+	flag.BoolVar(&svfs.HubicTimes, "hubic-times", false, "Use file times set by hubiC synchronization clients")
 
 	// Permissions
 	flag.Uint64Var(&svfs.DefaultUID, "default-uid", 0, "Default UID (default 0)")

@@ -15,6 +15,9 @@ var (
 	TargetContainer string
 	// ExtraAttr represents extra attributes fetching mode activation.
 	ExtraAttr bool
+	// HubicTimes represents the usage of hubiC synchronization clients
+	// meta headers to read and store file times.
+	HubicTimes bool
 	// SegmentSize is the size of a segment in bytes.
 	SegmentSize uint64
 
@@ -46,6 +49,11 @@ type SVFS struct{}
 func (s *SVFS) Init() (err error) {
 	// Copy storage URL option
 	overloadStorageURL := SwiftConnection.StorageUrl
+
+	// Use file times set by hubic synchronization clients
+	if HubicTimes {
+		objectMtimeHeader = hubicMtimeHeader
+	}
 
 	// Hubic special authentication
 	if HubicAuthorization != "" && HubicRefreshToken != "" {

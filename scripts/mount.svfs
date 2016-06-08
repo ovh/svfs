@@ -26,6 +26,7 @@ OPTIONS = {
     'extra_attr'        => '--readdir-extra-attributes',
     'gid'               => '--default-gid',
     'hubic_auth'        => '--hubic-authorization',
+    'hubic_times'       => '--hubic-times',
     'hubic_token'       => '--hubic-refresh-token',
     'identity_url'      => '--os-auth-url',
     'mode'              => '--default-mode',

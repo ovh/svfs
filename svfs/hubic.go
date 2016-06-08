@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/xlucas/swift"
@@ -13,7 +14,8 @@ import (
 
 const (
 	// HubicEndpoint is the HubiC API URL
-	HubicEndpoint = "https://api.hubic.com"
+	HubicEndpoint    = "https://api.hubic.com"
+	hubicMtimeHeader = objectMetaHeader + "Hubiclocallastmodified"
 )
 
 var (
@@ -22,6 +24,7 @@ var (
 	// HubicAuthorization is the basicAuth header used
 	// within requests to Hubic OAUTH2 API.
 	HubicAuthorization string
+	hubicDateRegex     = regexp.MustCompile("Z.*")
 )
 
 type hubicCredentials struct {

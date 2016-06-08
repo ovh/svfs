@@ -163,6 +163,20 @@ func (m Metadata) GetModTime() (t time.Time, err error) {
 	return FloatStringToTime(m["mtime"])
 }
 
+// Read hubic modification time from a Metadata object.
+func (m Metadata) GetHubicModTime() (t time.Time, err error) {
+	header := m["hubiclocallastmodified"]
+	// Hubic synchronization clients may not honor RFC 3339 or ISO 8601
+	// since they may forget writing the mandatory UTC offset. Thus we need
+	// a dirty and plain stupid hack to work around this behaviour.
+	if !strings.Contains(header, "Z") &&
+		!strings.Contains(header, "+") &&
+		strings.Count(header, "-") != 3 {
+		header += "Z"
+	}
+	return time.Parse(time.RFC3339, header)
+}
+
 // Write an modification time (mtime) to a Metadata object
 //
 // This is a defacto standard (used in the official python-swiftclient

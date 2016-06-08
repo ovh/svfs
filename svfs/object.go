@@ -16,11 +16,11 @@ const (
 	autoContentHeader = "X-Detect-Content-Type"
 	manifestHeader    = "X-Object-Manifest"
 	objectMetaHeader  = "X-Object-Meta-"
-	objectMtimeHeader = objectMetaHeader + "Mtime"
 )
 
 var (
-	segmentPathRegex = regexp.MustCompile("^([^/]+)/(.*)$")
+	objectMtimeHeader = objectMetaHeader + "Mtime"
+	segmentPathRegex  = regexp.MustCompile("^([^/]+)/(.*)$")
 )
 
 // Object is a node representing a swift object.
@@ -90,7 +90,7 @@ func (o *Object) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fu
 			defer o.m.Unlock()
 		}
 		h := o.sh.ObjectMetadata().Headers(objectMetaHeader)
-		o.sh[objectMtimeHeader] = swift.TimeToFloatString(req.Mtime)
+		o.sh[objectMtimeHeader] = formatTime(req.Mtime)
 		h[objectMtimeHeader] = o.sh[objectMtimeHeader]
 		return SwiftConnection.ObjectUpdate(o.c.Name, o.so.Name, h)
 	}
