@@ -66,15 +66,19 @@ func createSegment(container, prefix string, id *uint, uploaded *uint64) (io.Wri
 }
 
 func getMtime(object *swift.Object, headers swift.Headers) time.Time {
-	if HubicTimes {
-		if mtime, err := headers.ObjectMetadata().GetHubicModTime(); err == nil {
-			return mtime
+	if ExtraAttr && len(headers) > 0 {
+		if HubicTimes {
+			if mtime, err := headers.ObjectMetadata().GetHubicModTime(); err == nil {
+				return mtime
+			}
+		} else {
+			if mtime, err := headers.ObjectMetadata().GetModTime(); err == nil {
+				return mtime
+			}
 		}
 	}
-	if ExtraAttr && headers != nil {
-		if mtime, err := headers.ObjectMetadata().GetModTime(); err == nil {
-			return mtime
-		}
+	if object.LastModified.IsZero() {
+		return time.Now()
 	}
 	return object.LastModified
 }

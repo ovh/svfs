@@ -43,6 +43,7 @@ func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
 	a.Size = uint64(BlockSize)
 
 	if d.so != nil {
+		a.Atime = time.Now()
 		a.Mtime = getMtime(d.so, d.sh)
 		a.Ctime = a.Mtime
 		a.Crtime = a.Mtime
