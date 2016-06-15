@@ -249,7 +249,7 @@ func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *f
 // Mkdir creates a new directory node within the current directory. It is represented
 // by an empty object ending with a slash in the Swift container.
 func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error) {
-	absPath := d.path + req.Name
+	absPath := d.path + req.Name + "/"
 
 	// Create the file in swift
 	if err := SwiftConnection.ObjectPutBytes(d.c.Name, absPath, nil, dirContentType); err != nil {
@@ -261,7 +261,7 @@ func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node,
 		c:    d.c,
 		cs:   d.cs,
 		name: req.Name,
-		path: absPath + "/",
+		path: absPath,
 		sh:   swift.Headers{},
 		so: &swift.Object{
 			Name:         absPath,
