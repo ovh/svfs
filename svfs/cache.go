@@ -2,6 +2,7 @@ package svfs
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -20,6 +21,7 @@ var (
 // as well as cache entries access limit and expiration time.
 type Cache struct {
 	content   map[string]*CacheValue
+	mutex     sync.Mutex
 	nodeCount uint64
 }
 
@@ -31,6 +33,7 @@ type Cache struct {
 type CacheValue struct {
 	date        time.Time
 	accessCount uint64
+	mutex       sync.Mutex
 	temporary   bool
 	node        Node
 	nodes       map[string]Node
@@ -51,6 +54,9 @@ func (c *Cache) key(container, path string) string {
 // as a value. Node represents the parent node type. If the cache entry count limit is
 // reached, it will be marked as temporary thus evicted after one read.
 func (c *Cache) AddAll(container, path string, node Node, nodes map[string]Node) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	entry := &CacheValue{
 		date:  time.Now(),
 		node:  node,
@@ -70,16 +76,38 @@ func (c *Cache) AddAll(container, path string, node Node, nodes map[string]Node)
 
 // Delete removes a node from cache.
 func (c *Cache) Delete(container, path, name string) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	v, ok := c.content[c.key(container, path)]
 	if !ok {
 		return
 	}
+
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+
 	delete(v.nodes, name)
 }
 
 // DeleteAll removes all nodes for the cache key container:path.
 func (c *Cache) DeleteAll(container, path string) {
+	c.deleteAll(container, path, true)
+}
+
+func (c *Cache) deleteAll(container, path string, lock bool) {
+	if lock {
+		c.mutex.Lock()
+		defer c.mutex.Unlock()
+	}
+
 	v, found := c.content[c.key(container, path)]
+
+	if lock {
+		v.mutex.Lock()
+		defer v.mutex.Unlock()
+	}
+
 	if found &&
 		!v.temporary {
 		c.nodeCount -= uint64(len(c.content[c.key(container, path)].nodes))
@@ -90,10 +118,17 @@ func (c *Cache) DeleteAll(container, path string) {
 // Get retrieves a specific node from the cache. It returns nil if
 // the cache key container:path is missing.
 func (c *Cache) Get(container, path, name string) Node {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	v, ok := c.content[c.key(container, path)]
 	if !ok {
 		return nil
 	}
+
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+
 	return v.nodes[name]
 }
 
@@ -101,6 +136,9 @@ func (c *Cache) Get(container, path, name string) Node {
 // the parent node and its children nodes. If the cache entry is not found
 // or expired or access count exceeds the limit, both values will be nil.
 func (c *Cache) GetAll(container, path string) (Node, map[string]Node) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	v, found := c.content[c.key(container, path)]
 
 	// Not found
@@ -108,18 +146,21 @@ func (c *Cache) GetAll(container, path string) (Node, map[string]Node) {
 		return nil, nil
 	}
 
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+
 	// Increase access counter
 	v.accessCount++
 
 	// Found but expired
 	if time.Now().After(v.date.Add(CacheTimeout)) {
-		defer c.DeleteAll(container, path)
+		defer c.deleteAll(container, path, false)
 		return nil, nil
 	}
 
 	if v.temporary ||
 		(!(CacheMaxAccess < 0) && v.accessCount == uint64(CacheMaxAccess)) {
-		defer c.DeleteAll(container, path)
+		defer c.deleteAll(container, path, false)
 	}
 
 	return v.node, v.nodes
@@ -129,12 +170,18 @@ func (c *Cache) GetAll(container, path string) (Node, map[string]Node) {
 // key without changing cache access count for this entry.
 // Returns the parent node with the result.
 func (c *Cache) Peek(container, path string) (Node, bool) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	v, found := c.content[c.key(container, path)]
 
 	// Not found
 	if !found {
 		return nil, false
 	}
+
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
 
 	// Found but expired
 	if time.Now().After(v.date.Add(CacheTimeout)) {
@@ -147,10 +194,17 @@ func (c *Cache) Peek(container, path string) (Node, bool) {
 // Set adds a specific node in cache, given a previous peek
 // operation succeeded.
 func (c *Cache) Set(container, path, name string, node Node) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	v, ok := c.content[c.key(container, path)]
 	if !ok {
 		return
 	}
+
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+
 	v.nodes[name] = node
 }
 
