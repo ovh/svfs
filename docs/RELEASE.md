@@ -1,11 +1,10 @@
 # Changelog
 
-### FEATURES :
+### BUGFIXES :
 
-- [#68] Support container creation and removal.
-- [#69] Support hard links.
-- [#70] Support read-only access.
+- [#72] Pseudo display in Horizon.
+- [#74] Crash on concurrent map write.
 
 ### IMPROVEMENT :
 
-- [#71] Support file times set by synchronization clients for hubic.
+- [#73] Pseudo directory times.
