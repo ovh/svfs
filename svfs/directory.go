@@ -59,7 +59,7 @@ func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *f
 	path := d.path + req.Name
 
 	// New node
-	node := &Object{name: req.Name, path: path, c: d.c, cs: d.cs}
+	node := &Object{name: req.Name, path: path, c: d.c, cs: d.cs, p: d}
 
 	err := SwiftConnection.ObjectPutBytes(node.c.Name, node.path, nil, "")
 	if err != nil {
