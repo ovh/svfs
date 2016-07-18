@@ -60,4 +60,4 @@ empty intermediate directories within the object path as well.
 
 ### Does it run on Mac OS X ?
 
-Yes, pick the latest pkg, install it with ruby and osxfuse and there you go !
+Yes, pick the latest pkg, install it with ruby and [osxfuse](https://github.com/osxfuse/osxfuse) and there you go !

@@ -16,7 +16,6 @@ of the user you want to extract credentials for. Then
 choose to download the *openrc* file. Source it and
 enter your password when prompted.
 
-
 ### OVH API
 
 Log into the OVH API with your customer account or using your
@@ -31,6 +30,12 @@ be available as environment variables, starting with prefix `OS_`.
 
 You can use them with svfs like this :
 
+Using linux :
 ```
 sudo mount -t svfs -o username=$OS_USERNAME,password=$OS_PASSWORD,tenant=$OS_TENANT_NAME,region=$OS_REGION_NAME pcs /mountpoint
+```
+
+Using OSX :
+```
+mount_svfs pcs /mountpoint -o username=$OS_USERNAME,password=$OS_PASSWORD,tenant=$OS_TENANT_NAME,region=$OS_REGION_NAME
 ```

@@ -36,7 +36,7 @@ Using svfs directly :
 svfs --os-username=.. --os-password=.. ... myName /mountpoint &
 ```
 
-With OSX after osxfuse, ruby and pkg installation :
+With OSX after [osxfuse](https://github.com/osxfuse/osxfuse), ruby and last pkg installation :
 
 ```
 mount_svfs myName /mountpoint -o username=..,password=..,tenant=..,region=..,container=..
