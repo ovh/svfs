@@ -1,5 +1,6 @@
 # FAQ
 
+
 ### How does it compare to hubicfuse, cloudfuse, swiftFS ... ?
 
 * SVFS supports authentication versions 1/2/3, is stable and fully connected.
@@ -21,6 +22,7 @@ this case you should rely on an appropriate, journalized, battle-hardened local
 filesystem. This is also where you should manage ownership, permissions and other
 ACL/extended attributes information, relatively to your local users and groups.
 
+
 ### I got errors using `rsync` with svfs.
 
 By default, `rsync` works with *blocks*. SVFS abstracts *object* storage.
@@ -28,6 +30,7 @@ You need to tell `rsync` to work with entire files :
 - mount your svfs device with `extra_attr` option
 - `rsync -rtW --inplace --progress <source> <destination>`
 - profit
+
 
 ### Why can't I set uid/guid and permissions ?
 
@@ -40,6 +43,7 @@ from your local filesystem while you are storing data on a remote location.
 Given that, svfs doesn't support setting this information per file but provides
 per mountpoint options.
 
+
 ### Why are access/creation/modification times erroneous ?
 
 Openstack Swift generates and stores modification time so that users can't change
@@ -51,6 +55,7 @@ can't be set on a directory/container/mountpoint because every change occuring
 within one of this node would trigger too many requests. Usually that's not an
 issue for backup tools as they don't rely on directory metas.
 
+
 ### Why does an entire tree disappear when I remove the sole object in it ?
 
 Openstack Swift can support directories as standard objects when they are
@@ -58,6 +63,12 @@ uploaded without content. However, most of the time swift clients will not
 proceed this way. In this case, deleting an object will mean deleting all
 empty intermediate directories within the object path as well.
 
+
 ### Does it run on Mac OS X ?
 
 Yes, pick the latest pkg, install it with ruby and [osxfuse](https://github.com/osxfuse/osxfuse) and there you go !
+
+
+### How can I launch or write unit tests ?
+
+You just have to follow [unit tests guidelines](docs/Unit-tests.md).

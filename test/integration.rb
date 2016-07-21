@@ -5,13 +5,22 @@ require 'tempfile'
 require 'test/unit'
 
 TEMP_PREFIX = 'svfs-test'
+TEMP_CONTAINER = "#{TEMP_PREFIX}.#{SecureRandom.uuid}"
+TEST_DIRECTORY = "#{ENV['TEST_MOUNTPOINT']}/#{TEMP_CONTAINER}"
+BASE_PATH = "#{TEST_DIRECTORY}/#{TEMP_PREFIX}"
 
 class TestIntegration < Test::Unit::TestCase
 
+  # Called before every test method runs.
   def setup
-    @mountpoint = ENV['TEST_MOUNTPOINT']
-    @old_name = "#{@mountpoint}/#{TEMP_PREFIX}.#{SecureRandom.hex}"
-    @new_name = "#{@mountpoint}/#{TEMP_PREFIX}.#{SecureRandom.hex}"
+    Dir.mkdir(TEST_DIRECTORY)
+    @old_name = "#{BASE_PATH}.#{SecureRandom.hex}"
+    @new_name = "#{BASE_PATH}.#{SecureRandom.hex}"
+  end
+
+  # Called after every test method runs.
+  def teardown
+    Dir.rmdir(TEST_DIRECTORY)
   end
 
   # This test :
@@ -72,3 +81,4 @@ class TestIntegration < Test::Unit::TestCase
   end
 
 end
+
