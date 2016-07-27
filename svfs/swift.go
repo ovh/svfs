@@ -42,6 +42,10 @@ func createContainer(name string) (*swift.Container, error) {
 }
 
 func createManifest(obj *Object, container, segmentsPath, path string) error {
+	// Swift requires ampersand and question marks to be percent-encoded
+	segmentsPath = strings.Replace(segmentsPath, "&", "%26", -1)
+	segmentsPath = strings.Replace(segmentsPath, "?", "%3F", -1)
+
 	obj.sh = map[string]string{
 		manifestHeader:    segmentsPath,
 		"Content-Length":  "0",
@@ -101,6 +105,10 @@ func isSymlink(object swift.Object, path string) bool {
 
 func deleteSegments(container, manifestHeader string) error {
 	prefix := strings.TrimPrefix(manifestHeader, container+"/")
+
+	// Decode manifest header percent-encoded chars
+	prefix = strings.Replace(prefix, "%26", "&", -1)
+	prefix = strings.Replace(prefix, "%3F", "?", -1)
 
 	// Custom segment container name is not supported
 	if prefix == manifestHeader {
