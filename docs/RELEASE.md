@@ -2,4 +2,5 @@
 
 ### BUGFIX :
 
-- [#76] Panic on rename.
+- [#83] Failed to upload a large file containing either '&' or '?'
+
