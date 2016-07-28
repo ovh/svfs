@@ -57,6 +57,7 @@ def build(package, type, version, os, arch, deps)
   go_build_target = "#{package[:path]}/go-#{package[:name]}-#{os}-#{arch}"
   sh %{GOARCH=#{go_arch} GOOS=#{os} #{go_extra} go build -o #{go_build_target}}
   File.chmod(0755, go_build_target)
+
   sh %W{fpm
     --force
     -s dir
@@ -76,6 +77,8 @@ def build(package, type, version, os, arch, deps)
     #{file_mapping}
     #{go_build_target}=/usr/local/bin/#{package[:name]}
   }.join(' ')
+
+  File.delete(go_build_target)
 end
 
 def release(package, version)
