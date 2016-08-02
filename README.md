@@ -33,7 +33,7 @@ myName   /mountpoint   svfs   username=..,password=..,tenant=..,region=..,contai
 Using svfs directly :
 
 ```
-svfs --os-username=.. --os-password=.. ... myName /mountpoint &
+svfs mount --device myName --mountpoint /mountpoint --os-username=.. --os-password=.. ... &
 ```
 
 With OSX after [osxfuse](https://github.com/osxfuse/osxfuse), ruby and last pkg installation :
@@ -53,7 +53,6 @@ mount_svfs myName /mountpoint -o username=..,password=..,tenant=..,region=..,con
 Got errors using `rsync` with svfs ? Can't change creation time ? Why svfs after all ?
 
 Take a look at the [FAQ](docs/FAQ.md).
-
 
 ## Options
 

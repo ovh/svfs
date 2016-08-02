@@ -51,7 +51,7 @@ OPTIONS = {
 }
 
 if ARGV[2] != '-o' || ARGV.length != 4
-  puts "Usage: #{File.basename($0)} dev dir [-o option=value,[option=value]...]\n"
+  puts "Usage: #{File.basename($0)} device mountpoint [-o option=value,[option=value]...]\n"
   abort
 end
 
@@ -64,7 +64,7 @@ opts.select! do |o|
   part = o.partition('=')
   opt_key = part.first
   if opt_key == "go_gc"
-    extra = "GOGC=#{part.last} "
+    extra = "GOGC=#{part.last}"
   end
   if OPTIONS.has_key?(opt_key)
     o[opt_key] = OPTIONS[opt_key]
@@ -72,7 +72,7 @@ opts.select! do |o|
 end
 
 if extra.empty?
-  extra = "GOGC=60 "
+  extra = "GOGC=60"
 end
 
-system("#{extra}svfs #{opts.join(' ')} #{mount_dev} #{mount_dir} &")
+system("#{extra} svfs mount --device #{mount_dev} --mountpoint #{mount_dir} #{opts.join(' ')} &")
