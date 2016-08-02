@@ -49,7 +49,7 @@ OPTIONS = {
 }
 
 if ARGV[2] != '-o' || ARGV.length != 4
-  puts "Usage: #{File.basename($0)} dev dir [-o option=value,[option=value]...]\n"
+  puts "Usage: #{File.basename($0)} device mountpoint [-o option=value,[option=value]...]\n"
   abort
 end
 
@@ -73,4 +73,4 @@ if extra.empty?
   extra = "GOGC=60 "
 end
 
-system("#{extra}svfs #{opts.join(' ')} #{mount_dev} #{mount_dir} &")
+system("#{extra}svfs #{opts.join(' ')} --device #{mount_dev} --mountpoint #{mount_dir} &")

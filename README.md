@@ -16,6 +16,7 @@ This is not an official project of the Openstack community.
 
 Download and install the latest [release](https://github.com/ovh/svfs/releases) packaged for your distribution.
 
+
 ## Usage
 
 You can either use standard mount conventions or use the svfs binary directly.
@@ -33,7 +34,7 @@ myName   /mountpoint   svfs   username=..,password=..,tenant=..,region=..,contai
 Using svfs directly :
 
 ```
-svfs --os-username=.. --os-password=.. ... myName /mountpoint &
+svfs --os-username=.. --os-password=.. ... --device myName --mountpoint /mountpoint &
 ```
 
 With OSX after [osxfuse](https://github.com/osxfuse/osxfuse), ruby and last pkg installation :
@@ -54,8 +55,18 @@ Got errors using `rsync` with svfs ? Can't change creation time ? Why svfs after
 
 Take a look at the [FAQ](docs/FAQ.md).
 
+## Commands 
+
+* `info`: Display some information about SVFS current version and check if a new version of SVFS exist.
+
 
 ## Options
+
+#### Device options
+
+* `device`: device name of your choice. Can be anything you like (ex: pcs).
+* `mountpoint`: path to your mountpoint (ex: /mnt/pcs).
+
 
 #### Keystone options
 
