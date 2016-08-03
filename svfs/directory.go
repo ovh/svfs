@@ -290,6 +290,13 @@ func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 	)
 
 	if directory, ok := node.(*Directory); ok {
+		empty, err := directory.isEmpty()
+		if err != nil {
+			return err
+		}
+		if !empty {
+			return fuse.ENOTEMPTY
+		}
 		return d.removeDirectory(directory, req.Name)
 	}
 	if object, ok := node.(*Object); ok {
@@ -307,9 +314,26 @@ func (d *Directory) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp 
 	return nil
 }
 
+func (d *Directory) isEmpty() (bool, error) {
+	// Fetch objects
+	objects, err := SwiftConnection.ObjectsAll(d.c.Name, &swift.ObjectsOpts{
+		Delimiter: '/',
+		Prefix:    d.path,
+		Limit:     2,
+	})
+	if err != nil {
+		return false, err
+	}
+	for _, object := range objects {
+		if object.Name != d.path {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 func (d *Directory) move(oldContainer, oldPath, oldName, newContainer, newPath, newName string) error {
 	// Get the old node from cache
-
 	return fuse.ENOTSUP
 }
 
