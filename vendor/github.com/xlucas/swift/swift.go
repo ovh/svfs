@@ -1790,6 +1790,41 @@ func (c *Connection) ObjectUpdate(container string, objectName string, h Headers
 	return err
 }
 
+// ManifestUpdate adds, replaces or removes manifest metadata.
+//
+// Add or Update keys by mentioning them in the Metadata.  Use
+// Metadata.ObjectHeaders and Headers.ObjectMetadata to convert your
+// Metadata to and from normal HTTP headers.
+//
+// This removes all metadata previously added to the manifest and
+// replaces it with that passed in so to delete keys, just don't
+// mention them the headers you pass in.
+//
+// Manifest metadata can only be read with Object() not with Objects().
+//
+// This can also be used to set headers not already assigned such as
+// X-Delete-At or X-Delete-After for expiring manifests.
+//
+// You cannot use this to change any of the manifest's other headers
+// such as Content-Type, ETag, etc.
+//
+// Refer to copying a manifest when you need to update metadata or
+// other headers such as Content-Type or CORS headers.
+//
+// May return ObjectNotFound.
+func (c *Connection) ManifestUpdate(container string, manifestName string, h Headers) error {
+	_, _, err := c.storage(RequestOpts{
+		Container:  container,
+		ObjectName: manifestName,
+		Operation:  "POST",
+		ErrorMap:   objectErrorMap,
+		NoResponse: true,
+		Parameters: map[string][]string{"multipart-manifest": []string{"get"}},
+		Headers:    h,
+	})
+	return err
+}
+
 // ObjectCopy does a server side copy of an object to a new position
 //
 // All metadata is preserved.  If metadata is set in the headers then

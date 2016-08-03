@@ -92,6 +92,9 @@ func (o *Object) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fu
 		h := o.sh.ObjectMetadata().Headers(objectMetaHeader)
 		o.sh[objectMtimeHeader] = formatTime(req.Mtime)
 		h[objectMtimeHeader] = o.sh[objectMtimeHeader]
+		if o.segmented {
+			return SwiftConnection.ManifestUpdate(o.c.Name, o.so.Name, h)
+		}
 		return SwiftConnection.ObjectUpdate(o.c.Name, o.so.Name, h)
 	}
 

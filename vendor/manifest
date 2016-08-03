@@ -4,30 +4,35 @@
 		{
 			"importpath": "bazil.org/fuse",
 			"repository": "https://github.com/bazil/fuse",
+			"vcs": "",
 			"revision": "37bfa8be929171feec943f3496bc4befdeaf10db",
 			"branch": "master"
 		},
 		{
 			"importpath": "github.com/bazil/fuse",
 			"repository": "https://github.com/bazil/fuse",
+			"vcs": "",
 			"revision": "37bfa8be929171feec943f3496bc4befdeaf10db",
 			"branch": "master"
 		},
 		{
 			"importpath": "github.com/ncw/swift",
 			"repository": "https://github.com/ncw/swift",
+			"vcs": "",
 			"revision": "77b213b0cd16b6f2f2146b7cc54a1aa8a5613b01",
 			"branch": "master"
 		},
 		{
 			"importpath": "github.com/xlucas/swift",
 			"repository": "https://github.com/xlucas/swift",
-			"revision": "3e707133987278800b96510fc971aec80a175321",
+			"vcs": "git",
+			"revision": "337f4e5e71a0d401770c1ff805d6e1822ff3ed99",
 			"branch": "master"
 		},
 		{
 			"importpath": "golang.org/x/net/context",
 			"repository": "https://go.googlesource.com/net",
+			"vcs": "",
 			"revision": "8968c61983e8f51a91b8c0ef25bf739278c89634",
 			"branch": "master",
 			"path": "/context"
@@ -35,6 +40,7 @@
 		{
 			"importpath": "golang.org/x/sys/unix",
 			"repository": "https://go.googlesource.com/sys",
+			"vcs": "",
 			"revision": "50c6bc5e4292a1d4e65c6e9be5f53be28bcbe28e",
 			"branch": "master",
 			"path": "/unix"
