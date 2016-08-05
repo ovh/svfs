@@ -235,7 +235,6 @@ func (d *Directory) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *f
 	if _, found := directoryCache.Peek(d.c.Name, d.path); !found {
 		d.ReadDirAll(ctx)
 	}
-
 	// Find matching child
 	if item := directoryCache.Get(d.c.Name, d.path, req.Name); item != nil {
 		if n, ok := item.(fs.Node); ok {
@@ -324,9 +323,11 @@ func (d *Directory) isEmpty() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	for _, object := range objects {
-		if object.Name != d.path {
-			return false, nil
+	if len(objects) > 0 {
+		for _, object := range objects {
+			if object.Name != d.path {
+				return false, nil
+			}
 		}
 	}
 	return true, nil
@@ -414,7 +415,6 @@ func (d *Directory) Rename(ctx context.Context, req *fuse.RenameRequest, newDir 
 		if oldObject, ok := oldNode.(*Object); ok {
 			return oldObject.rename(t, req.NewName)
 		}
-
 		if oldSymlink, ok := oldNode.(*Symlink); ok {
 			return oldSymlink.rename(t, req.NewName)
 		}

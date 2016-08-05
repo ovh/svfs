@@ -58,10 +58,17 @@ func (r *Root) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, erro
 
 // Remove deletes a container.
 func (r *Root) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
+	if !req.Dir {
+		return fuse.ENOTSUP
+	}
 	for _, container := range []string{req.Name + segmentContainerSuffix, req.Name} {
-		err := SwiftConnection.ContainerDelete(container)
-		if err != nil {
-			return err
+		if err := SwiftConnection.ContainerDelete(container); err != nil {
+			if err == swift.ContainerNotEmpty {
+				return fuse.ENOTEMPTY
+			}
+			if err != swift.ContainerNotFound {
+				return err
+			}
 		}
 	}
 

@@ -80,5 +80,45 @@ class TestIntegration < Test::Unit::TestCase
     Dir.rmdir(@new_name)
   end
 
+  # This test :
+  # - creates a container containing an empty file
+  # - tries to rmdir(2) this container
+  # - delete the file and tries again
+  def test_empty_container
+    File.open(@new_name, "w").close()
+
+    assert_raise Errno::ENOTEMPTY do
+      Dir.rmdir(TEST_DIRECTORY)
+    end
+
+    File.delete(@new_name)
+
+    assert_nothing_raised do
+      Dir.rmdir(TEST_DIRECTORY)
+    end
+
+    Dir.mkdir(TEST_DIRECTORY)
+  end
+
+  # This test :
+  # - creates a directory containing an empty file
+  # - tries to rmdir(2) this directory
+  # - delete the file and tries again
+  def test_empty_directory
+    Dir.mkdir(@new_name)
+    file_name = "#{@new_name}/file"
+    File.open(file_name, "w").close()
+
+    assert_raise Errno::ENOTEMPTY do
+      Dir.rmdir(@new_name)
+    end
+
+    File.delete(file_name)
+
+    assert_nothing_raised do
+      Dir.rmdir(@new_name)
+    end
+  end
+
 end
 
