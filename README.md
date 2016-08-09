@@ -59,7 +59,7 @@ Take a look at the [FAQ](docs/FAQ.md).
 
 #### Keystone options
 
-* `identity_url`: keystone URL (default is https://auth.cloud.ovh.net/v2.0).
+* `auth_url`: keystone URL (default is https://auth.cloud.ovh.net/v2.0).
 * `username`: your keystone user name.
 * `password`: your keystone password.
 * `tenant`: your project name.
@@ -85,9 +85,8 @@ all containers within the tenant will be available under the chosen mountpoint.
 * `segment_size`: large object segments size in MB. When an object has a content larger than
 this setting, it will be uploaded in multiple parts of the specified size. Default is 256 MB.
 Segment size should not exceed 5 GB.
-* `timeout`: connection timeout to the swift storage endpoint. If an operation takes longer
-than this timeout and no data has been seen on open sockets, an error is returned. This can
-happen when copying non-segmented large files server-side. Default is 5 minutes.
+* `connect_timeout`: connection timeout to the swift storage endpoint. Default is 15 seconds.
+* `request_timeout`: timeout of requests sent to the swift storage endpoint. Default is 5 minutes.
 
 #### Prefetch options
 

@@ -29,7 +29,8 @@ func parseFlags(debug *bool, profAddr, cpuProf, memProf *string) {
 	flag.StringVar(&svfs.SwiftConnection.StorageUrl, "os-storage-url", "", "Storage URL")
 	flag.StringVar(&svfs.SwiftConnection.Tenant, "os-tenant-name", "", "Tenant name")
 	flag.IntVar(&svfs.SwiftConnection.AuthVersion, "os-auth-version", 0, "Authentication version, 0 = auto")
-	flag.DurationVar(&svfs.SwiftConnection.ConnectTimeout, "os-connect-timeout", 5*time.Minute, "Swift connection timeout")
+	flag.DurationVar(&svfs.SwiftConnection.ConnectTimeout, "os-connect-timeout", 15*time.Second, "Swift connection timeout")
+	flag.DurationVar(&svfs.SwiftConnection.Timeout, "os-request-timeout", 5*time.Minute, "Swift operation timeout")
 	flag.Uint64Var(&svfs.SegmentSize, "os-segment-size", 256, "Swift segment size in MiB")
 	flag.StringVar(&swift.DefaultUserAgent, "user-agent", "svfs/"+svfs.Version, "Default User-Agent")
 
