@@ -53,6 +53,7 @@ func parseFlags(debug *bool, profAddr, cpuProf, memProf *string) {
 	flag.BoolVar(&svfs.ExtraAttr, "readdir-extra-attributes", false, "Fetch extra attributes")
 	flag.UintVar(&svfs.BlockSize, "block-size", 4096, "Block size in bytes")
 	flag.UintVar(&svfs.ReadAheadSize, "readahead-size", 128, "Per file readahead size in KiB")
+	flag.BoolVar(&svfs.TransferMode, "transfer-mode", false, "Enable transfer mode")
 
 	// Cache Options
 	flag.DurationVar(&svfs.CacheTimeout, "cache-ttl", 1*time.Minute, "Cache timeout")

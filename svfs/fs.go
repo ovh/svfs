@@ -39,6 +39,10 @@ var (
 	ReadAheadSize uint
 	// ReadOnly represents the filesystem readonly access mode activation.
 	ReadOnly bool
+	// TransferMode represents a mode of operation enabled by the user to indicate
+	// that svfs will interact only with processes transferring files. This is seen
+	// as an opportunity to optimize network access by reducing requests to Swift.
+	TransferMode bool
 )
 
 // SVFS implements the Swift Virtual File System.

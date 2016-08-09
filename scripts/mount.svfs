@@ -44,6 +44,7 @@ OPTIONS = {
     'storage_url'       => '--os-storage-url',
     'tenant'            => '--os-tenant-name',
     'token'             => '--os-auth-token',
+    'transfer_mode'     => '--transfer-mode',
     'uid'               => '--default-uid',
     'username'          => '--os-username',
     'version'           => '--os-auth-version',

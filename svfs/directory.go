@@ -61,9 +61,13 @@ func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *f
 	// New node
 	node := &Object{name: req.Name, path: path, c: d.c, cs: d.cs, p: d}
 
-	err := SwiftConnection.ObjectPutBytes(node.c.Name, node.path, nil, "")
-	if err != nil {
-		return nil, nil, err
+	// Don't create an empty file in transfer mode since we assume the file
+	// has been created to be immediately written to with some content.
+	if !TransferMode {
+		err := SwiftConnection.ObjectPutBytes(node.c.Name, node.path, nil, "")
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// Get object handler
@@ -251,8 +255,10 @@ func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node,
 	absPath := d.path + req.Name + "/"
 
 	// Create the file in swift
-	if err := SwiftConnection.ObjectPutBytes(d.c.Name, absPath, nil, dirContentType); err != nil {
-		return nil, fuse.EIO
+	if !TransferMode {
+		if err := SwiftConnection.ObjectPutBytes(d.c.Name, absPath, nil, dirContentType); err != nil {
+			return nil, fuse.EIO
+		}
 	}
 
 	// Directory object
