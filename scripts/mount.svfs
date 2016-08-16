@@ -50,14 +50,14 @@ OPTIONS = {
     'version'           => '--os-auth-version',
 }
 
-if ARGV[2] != '-o' || ARGV.length != 4
+if ARGV.length != 2 && (ARGV.length != 4 || ARGV[2] != "-o")
   puts "Usage: #{File.basename($0)} device mountpoint [-o option=value,[option=value]...]\n"
   abort
 end
 
 mount_dev = ARGV[0]
 mount_dir = ARGV[1]
-opts      = ARGV[3].split(',')
+opts      = ARGV[3].nil? ? ['rw'] : ARGV[3].split(',')
 extra     = ""
 
 opts.select! do |o|

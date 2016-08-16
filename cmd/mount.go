@@ -14,6 +14,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/ovh/svfs/svfs"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/xlucas/swift"
 )
 
@@ -51,6 +52,9 @@ var mountCmd = &cobra.Command{
 		//Mandatory flags
 		cmd.MarkPersistentFlagRequired("device")
 		cmd.MarkPersistentFlagRequired("mountpoint")
+
+		// Use config file or ENV var if set
+		useExtraConf()
 
 		// Debug
 		if debug {
@@ -171,6 +175,14 @@ func setFlags() {
 	flags.StringVar(&mountpoint, "mountpoint", "", "Mountpoint")
 
 	mountCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+	// Init binded flags
+	viper.BindPFlag("os_auth_url", mountCmd.PersistentFlags().Lookup("os-auth-url"))
+	viper.BindPFlag("os_container_name", mountCmd.PersistentFlags().Lookup("os-container-name"))
+	viper.BindPFlag("os_tenant_name", mountCmd.PersistentFlags().Lookup("os-tenant-name"))
+	viper.BindPFlag("os_username", mountCmd.PersistentFlags().Lookup("os-username"))
+	viper.BindPFlag("os_password", mountCmd.PersistentFlags().Lookup("os-password"))
+	viper.BindPFlag("os_region_name", mountCmd.PersistentFlags().Lookup("os-region-name"))
 }
 
 func mountOptions(device string) (options []fuse.MountOption) {
@@ -231,4 +243,13 @@ func createMemProf(memProf string) {
 	pprof.WriteHeapProfile(f)
 
 	f.Close()
+}
+
+func useExtraConf() {
+	svfs.SwiftConnection.AuthUrl = viper.GetString("os_auth_url")
+	svfs.TargetContainer = viper.GetString("os_container_name")
+	svfs.SwiftConnection.Tenant = viper.GetString("os_tenant_name")
+	svfs.SwiftConnection.UserName = viper.GetString("os_username")
+	svfs.SwiftConnection.ApiKey = viper.GetString("os_password")
+	svfs.SwiftConnection.Region = viper.GetString("os_region_name")
 }
