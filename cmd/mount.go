@@ -12,24 +12,29 @@ import (
 	fusefs "bazil.org/fuse/fs"
 	"github.com/Sirupsen/logrus"
 	"github.com/fatih/color"
+	"github.com/ovh/svfs/config"
 	"github.com/ovh/svfs/svfs"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/xlucas/swift"
 )
 
 var (
-	debug      bool
-	fs         svfs.SVFS
-	srv        *fusefs.Server
-	profAddr   string
-	cpuProf    string
-	memProf    string
-	cfgFile    string
-	device     string
-	mountpoint string
+	configError error
+	debug       bool
+	fs          svfs.SVFS
+	srv         *fusefs.Server
+	profAddr    string
+	cpuProf     string
+	memProf     string
+	cfgFile     string
+	device      string
+	mountpoint  string
 )
 
 func init() {
+	configError = config.LoadConfig()
+
 	// Logger
 	formatter := new(logrus.TextFormatter)
 	formatter.TimestampFormat = time.RFC3339
@@ -48,14 +53,25 @@ var mountCmd = &cobra.Command{
 	Long: "Mount object storage either from HubiC or a vanilla Swift access\n" +
 		"as a device at the given mountpoint.",
 	Run: func(cmd *cobra.Command, args []string) {
-		//Mandatory flags
-		cmd.MarkPersistentFlagRequired("device")
-		cmd.MarkPersistentFlagRequired("mountpoint")
 
 		// Debug
 		if debug {
 			setDebug()
 		}
+
+		// Config validation
+		if configError != nil {
+			yellow := color.New(color.FgYellow).SprintFunc()
+			cyan := color.New(color.FgCyan).SprintFunc()
+			logrus.WithField("source", yellow("svfs")).Debugln(cyan("Skipping configuration : ", configError))
+		}
+
+		//Mandatory flags
+		cmd.MarkPersistentFlagRequired("device")
+		cmd.MarkPersistentFlagRequired("mountpoint")
+
+		// Use config file or ENV var if set
+		useConfiguration()
 
 		// Live profiling
 		if profAddr != "" {
@@ -135,7 +151,7 @@ func setFlags() {
 	flags.StringVar(&swift.DefaultUserAgent, "user-agent", "svfs/"+svfs.Version, "Default User-Agent")
 
 	//HubiC options
-	flags.StringVar(&svfs.HubicAuthorization, "hubic-autorization", "", "hubiC authorization code")
+	flags.StringVar(&svfs.HubicAuthorization, "hubic-authorization", "", "hubiC authorization code")
 	flags.StringVar(&svfs.HubicRefreshToken, "hubic-refresh-token", "", "hubiC refresh token")
 	flags.BoolVar(&svfs.HubicTimes, "hubic-times", false, "Use file times set by hubiC synchronization clients")
 
@@ -157,7 +173,7 @@ func setFlags() {
 
 	// Cache Options
 	flags.DurationVar(&svfs.CacheTimeout, "cache-ttl", 1*time.Minute, "Cache timeout")
-	flags.Int64Var(&svfs.CacheMaxEntries, "cache-max-entires", -1, "Maximum overall entires allowed in cache")
+	flags.Int64Var(&svfs.CacheMaxEntries, "cache-max-entries", -1, "Maximum overall entries allowed in cache")
 	flags.Int64Var(&svfs.CacheMaxAccess, "cache-max-access", -1, "Maximum access count to cached entries")
 
 	// Debug and profiling
@@ -171,6 +187,17 @@ func setFlags() {
 	flags.StringVar(&mountpoint, "mountpoint", "", "Mountpoint")
 
 	mountCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+	// Bind cobra flags to viper flags
+	viper.BindPFlag("os_auth_url", mountCmd.PersistentFlags().Lookup("os-auth-url"))
+	viper.BindPFlag("os_username", mountCmd.PersistentFlags().Lookup("os-username"))
+	viper.BindPFlag("os_password", mountCmd.PersistentFlags().Lookup("os-password"))
+	viper.BindPFlag("os_tenant_name", mountCmd.PersistentFlags().Lookup("os-tenant-name"))
+	viper.BindPFlag("os_region_name", mountCmd.PersistentFlags().Lookup("os-region-name"))
+	viper.BindPFlag("os_auth_token", mountCmd.PersistentFlags().Lookup("os-auth-token"))
+	viper.BindPFlag("os_storage_url", mountCmd.PersistentFlags().Lookup("os-storage-url"))
+	viper.BindPFlag("hubic_auth", mountCmd.PersistentFlags().Lookup("hubic-authorization"))
+	viper.BindPFlag("hubic_token", mountCmd.PersistentFlags().Lookup("hubic-refresh-token"))
 }
 
 func mountOptions(device string) (options []fuse.MountOption) {
@@ -231,4 +258,18 @@ func createMemProf(memProf string) {
 	pprof.WriteHeapProfile(f)
 
 	f.Close()
+}
+
+func useConfiguration() {
+	svfs.HubicAuthorization = viper.GetString("hubic_auth")
+	svfs.HubicRefreshToken = viper.GetString("hubic_token")
+
+	svfs.SwiftConnection.AuthToken = viper.GetString("os_auth_token")
+	svfs.SwiftConnection.StorageUrl = viper.GetString("os_storage_url")
+
+	svfs.SwiftConnection.AuthUrl = viper.GetString("os_auth_url")
+	svfs.SwiftConnection.Tenant = viper.GetString("os_tenant_name")
+	svfs.SwiftConnection.UserName = viper.GetString("os_username")
+	svfs.SwiftConnection.ApiKey = viper.GetString("os_password")
+	svfs.SwiftConnection.Region = viper.GetString("os_region_name")
 }

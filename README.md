@@ -20,43 +20,65 @@ Download and install the latest [release](https://github.com/ovh/svfs/releases) 
 
 ## Usage
 
-You can either use standard mount conventions or use the svfs binary directly.
+#### Mount command
 
-Using the mount command :
-```
-mount -t svfs -o username=..,password=..,tenant=..,region=..,container=.. myName /mountpoint
-```
-
-Using `/etc/fstab` :
-```
-myName   /mountpoint   svfs   username=..,password=..,tenant=..,region=..,container=..  0 0
-```
-
-Using svfs directly :
+On Linux (requires fuse and ruby) :
 
 ```
-svfs mount --device myName --mountpoint /mountpoint --os-username=.. --os-password=.. ... &
+mount -t svfs -o <options> <device> /mountpoint
 ```
 
-With OSX after [osxfuse](https://github.com/osxfuse/osxfuse), ruby and last pkg installation :
+On OSX (requires osxfuse and ruby) :
 
 ```
-mount_svfs myName /mountpoint -o username=..,password=..,tenant=..,region=..,container=..
+mount_svfs <device> /mountpoint -o <options>
 ```
 
+Notes :
+- You can pick any name you want for the `device` parameter.
+- All available mount options are described later in this document.
+
+Credentials can be specified in mount options, however this may be desirable to read them from an external source. The following sections desribe alternative approaches.
+
+#### Reading credentials from the environment
+
+SVFS supports reading the following set of environment variables :
+
+* If you are using HubiC :
+```
+ HUBIC_AUTH
+ HUBIC_TOKEN
+```
+* If you are using a vanilla Swift endpoint (like OVH PCS), after sourcing your [OpenRC](http://docs.openstack.org/user-guide/common/cli-set-environment-variables-using-openstack-rc.html) file :
+```
+ OS_AUTH_URL
+ OS_USERNAME
+ OS_PASSWORD
+ OS_REGION_NAME
+ OS_TENANT_NAME
+```
+* If you already authenticated to an identity endpoint :
+```
+ OS_AUTH_TOKEN
+ OS_STORAGE_URL
+```
+
+#### Reading credentials from a configuration file
+
+All environment variables can also be set in a YAML configuration file placed at `/etc/svfs.yaml`.
+
+For instance :
+```yaml
+hubic_auth: XXXXXXXXXX..
+hubic_token: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX...
+```
 
 ## Usage with OVH products
 
 - Usage with OVH Public Cloud Storage is explained [here](docs/PCS.md).
 - Usage with hubiC is explained [here](docs/HubiC.md).
 
-## FAQ
-
-Got errors using `rsync` with svfs ? Can't change creation time ? Why svfs after all ?
-
-Take a look at the [FAQ](docs/FAQ.md).
-
-## Options
+## Mount options
 
 #### Keystone options
 
@@ -146,6 +168,12 @@ SVFS doesn't support :
 * Symlink targets across containers (but within the same container).
 
 Take a look at the [docs](docs) for further discussions about SVFS approach.
+
+## FAQ
+
+Got errors using `rsync` with svfs ? Can't change creation time ? Why svfs after all ?
+
+Take a look at the [FAQ](docs/FAQ.md).
 
 ## Hacking
 
