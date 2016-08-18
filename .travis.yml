@@ -1,5 +1,15 @@
 language: go
 go:
-    - 1.6
-script: go install
+  - 1.6.3
+  - 1.7
+  - tip
+
+os:
+  - linux
+  - osx
+
+script:
+  - go install
+
 install: true
+sudo: false
