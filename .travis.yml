@@ -12,3 +12,4 @@ script:
   - go install
 
 install: true
+sudo: false
