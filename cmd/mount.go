@@ -117,56 +117,58 @@ var mountCmd = &cobra.Command{
 }
 
 func setFlags() {
+	flags := mountCmd.PersistentFlags()
+
 	//Swift options
-	mountCmd.PersistentFlags().StringVar(&svfs.SwiftConnection.AuthUrl, "os-auth-url", "https://auth.cloud.ovh.net/v2.0", "Authentification URL")
-	mountCmd.PersistentFlags().StringVar(&svfs.TargetContainer, "os-container-name", "", "Container name")
-	mountCmd.PersistentFlags().StringVar(&svfs.SwiftConnection.AuthToken, "os-auth-token", "", "Authentification token")
-	mountCmd.PersistentFlags().StringVar(&svfs.SwiftConnection.UserName, "os-username", "", "Username")
-	mountCmd.PersistentFlags().StringVar(&svfs.SwiftConnection.ApiKey, "os-password", "", "User password")
-	mountCmd.PersistentFlags().StringVar(&svfs.SwiftConnection.Region, "os-region-name", "", "Region name")
-	mountCmd.PersistentFlags().StringVar(&svfs.SwiftConnection.StorageUrl, "os-storage-url", "", "Storage URL")
-	mountCmd.PersistentFlags().StringVar(&svfs.SwiftConnection.Tenant, "os-tenant-name", "", "Tenant name")
-	mountCmd.PersistentFlags().IntVar(&svfs.SwiftConnection.AuthVersion, "os-auth-version", 0, "Authentification version, 0 = auto")
-	mountCmd.PersistentFlags().DurationVar(&svfs.SwiftConnection.ConnectTimeout, "os-connect-timeout", 15*time.Second, "Swift connection timeout")
-	mountCmd.PersistentFlags().DurationVar(&svfs.SwiftConnection.Timeout, "os-request-timeout", 5*time.Minute, "Swift operation timeout")
-	mountCmd.PersistentFlags().Uint64Var(&svfs.SegmentSize, "os-segment-size", 256, "Swift segment size in MiB")
-	mountCmd.PersistentFlags().StringVar(&swift.DefaultUserAgent, "user-agent", "svfs/"+svfs.Version, "Default User-Agent")
+	flags.StringVar(&svfs.SwiftConnection.AuthUrl, "os-auth-url", "https://auth.cloud.ovh.net/v2.0", "Authentification URL")
+	flags.StringVar(&svfs.TargetContainer, "os-container-name", "", "Container name")
+	flags.StringVar(&svfs.SwiftConnection.AuthToken, "os-auth-token", "", "Authentification token")
+	flags.StringVar(&svfs.SwiftConnection.UserName, "os-username", "", "Username")
+	flags.StringVar(&svfs.SwiftConnection.ApiKey, "os-password", "", "User password")
+	flags.StringVar(&svfs.SwiftConnection.Region, "os-region-name", "", "Region name")
+	flags.StringVar(&svfs.SwiftConnection.StorageUrl, "os-storage-url", "", "Storage URL")
+	flags.StringVar(&svfs.SwiftConnection.Tenant, "os-tenant-name", "", "Tenant name")
+	flags.IntVar(&svfs.SwiftConnection.AuthVersion, "os-auth-version", 0, "Authentification version, 0 = auto")
+	flags.DurationVar(&svfs.SwiftConnection.ConnectTimeout, "os-connect-timeout", 15*time.Second, "Swift connection timeout")
+	flags.DurationVar(&svfs.SwiftConnection.Timeout, "os-request-timeout", 5*time.Minute, "Swift operation timeout")
+	flags.Uint64Var(&svfs.SegmentSize, "os-segment-size", 256, "Swift segment size in MiB")
+	flags.StringVar(&swift.DefaultUserAgent, "user-agent", "svfs/"+svfs.Version, "Default User-Agent")
 
 	//HubiC options
-	mountCmd.PersistentFlags().StringVar(&svfs.HubicAuthorization, "hubic-autorization", "", "hubiC authorization code")
-	mountCmd.PersistentFlags().StringVar(&svfs.HubicRefreshToken, "hubic-refresh-token", "", "hubiC refresh token")
-	mountCmd.PersistentFlags().BoolVar(&svfs.HubicTimes, "hubic-times", false, "Use file times set by hubiC synchronization clients")
+	flags.StringVar(&svfs.HubicAuthorization, "hubic-autorization", "", "hubiC authorization code")
+	flags.StringVar(&svfs.HubicRefreshToken, "hubic-refresh-token", "", "hubiC refresh token")
+	flags.BoolVar(&svfs.HubicTimes, "hubic-times", false, "Use file times set by hubiC synchronization clients")
 
 	// Permissions
-	mountCmd.PersistentFlags().Uint64Var(&svfs.DefaultUID, "default-uid", 0, "Default UID (default 0)")
-	mountCmd.PersistentFlags().Uint64Var(&svfs.DefaultGID, "default-gid", 0, "Default GID (default 0)")
-	mountCmd.PersistentFlags().Uint64Var(&svfs.DefaultMode, "default-mode", 0700, "Default permissions")
-	mountCmd.PersistentFlags().BoolVar(&svfs.AllowRoot, "allow-root", false, "Fuse allow-root option")
-	mountCmd.PersistentFlags().BoolVar(&svfs.AllowOther, "allow-other", true, "Fuse allow_other option")
-	mountCmd.PersistentFlags().BoolVar(&svfs.DefaultPermissions, "default-permissions", true, "Fuse default_permissions option")
-	mountCmd.PersistentFlags().BoolVar(&svfs.ReadOnly, "read-only", false, "Read only access")
+	flags.Uint64Var(&svfs.DefaultUID, "default-uid", 0, "Default UID (default 0)")
+	flags.Uint64Var(&svfs.DefaultGID, "default-gid", 0, "Default GID (default 0)")
+	flags.Uint64Var(&svfs.DefaultMode, "default-mode", 0700, "Default permissions")
+	flags.BoolVar(&svfs.AllowRoot, "allow-root", false, "Fuse allow-root option")
+	flags.BoolVar(&svfs.AllowOther, "allow-other", true, "Fuse allow_other option")
+	flags.BoolVar(&svfs.DefaultPermissions, "default-permissions", true, "Fuse default_permissions option")
+	flags.BoolVar(&svfs.ReadOnly, "read-only", false, "Read only access")
 
 	// Prefetch
-	mountCmd.PersistentFlags().Uint64Var(&svfs.ListerConcurrency, "readdir-concurrency", 20, "Directory listing concurrency")
-	mountCmd.PersistentFlags().BoolVar(&svfs.ExtraAttr, "readdir-extra-attributes", false, "Fetch extra attributes")
-	mountCmd.PersistentFlags().UintVar(&svfs.BlockSize, "block-size", 4096, "Block size in bytes")
-	mountCmd.PersistentFlags().UintVar(&svfs.ReadAheadSize, "readahead-size", 128, "Per file readhead size in KiB")
-	mountCmd.PersistentFlags().BoolVar(&svfs.TransferMode, "transfer-mode", false, "Enable transfer mode")
+	flags.Uint64Var(&svfs.ListerConcurrency, "readdir-concurrency", 20, "Directory listing concurrency")
+	flags.BoolVar(&svfs.ExtraAttr, "readdir-extra-attributes", false, "Fetch extra attributes")
+	flags.UintVar(&svfs.BlockSize, "block-size", 4096, "Block size in bytes")
+	flags.UintVar(&svfs.ReadAheadSize, "readahead-size", 128, "Per file readhead size in KiB")
+	flags.BoolVar(&svfs.TransferMode, "transfer-mode", false, "Enable transfer mode")
 
 	// Cache Options
-	mountCmd.PersistentFlags().DurationVar(&svfs.CacheTimeout, "cache-ttl", 1*time.Minute, "Cache timeout")
-	mountCmd.PersistentFlags().Int64Var(&svfs.CacheMaxEntries, "cache-max-entires", -1, "Maximum overall entires allowed in cache")
-	mountCmd.PersistentFlags().Int64Var(&svfs.CacheMaxAccess, "cache-max-access", -1, "Maximum access count to cached entries")
+	flags.DurationVar(&svfs.CacheTimeout, "cache-ttl", 1*time.Minute, "Cache timeout")
+	flags.Int64Var(&svfs.CacheMaxEntries, "cache-max-entires", -1, "Maximum overall entires allowed in cache")
+	flags.Int64Var(&svfs.CacheMaxAccess, "cache-max-access", -1, "Maximum access count to cached entries")
 
 	// Debug and profiling
-	mountCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable fuse debug log")
-	mountCmd.PersistentFlags().StringVar(&profAddr, "profile-bind", "", "Profiling information will be served at this address")
-	mountCmd.PersistentFlags().StringVar(&cpuProf, "profile-cpu", "", "Write cpu profile to this file")
-	mountCmd.PersistentFlags().StringVar(&memProf, "profile-mem", "", "Write memory profile to this file")
+	flags.BoolVar(&debug, "debug", false, "Enable fuse debug log")
+	flags.StringVar(&profAddr, "profile-bind", "", "Profiling information will be served at this address")
+	flags.StringVar(&cpuProf, "profile-cpu", "", "Write cpu profile to this file")
+	flags.StringVar(&memProf, "profile-mem", "", "Write memory profile to this file")
 
 	// Mandatory flags
-	mountCmd.PersistentFlags().StringVar(&device, "device", "", "Device name")
-	mountCmd.PersistentFlags().StringVar(&mountpoint, "mountpoint", "", "Mountpoint")
+	flags.StringVar(&device, "device", "", "Device name")
+	flags.StringVar(&mountpoint, "mountpoint", "", "Mountpoint")
 
 	mountCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

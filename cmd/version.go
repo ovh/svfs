@@ -38,7 +38,7 @@ var versionCmd = &cobra.Command{
 			return err
 		}
 
-		// Get latest release
+		// Get the latest release
 		releases, _, err := client.Repositories.ListReleases(
 			gitHubOwner,
 			gitHubRepo,
