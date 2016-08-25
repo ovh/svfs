@@ -164,7 +164,7 @@ func setFlags() {
 	flags.BoolVar(&debug, "debug", false, "Enable fuse debug log")
 	flags.StringVar(&profAddr, "profile-bind", "", "Profiling information will be served at this address")
 	flags.StringVar(&cpuProf, "profile-cpu", "", "Write cpu profile to this file")
-	flags.StringVar(&memProf, "profile-mem", "", "Write memory profile to this file")
+	flags.StringVar(&memProf, "profile-ram", "", "Write memory profile to this file")
 
 	// Mandatory flags
 	flags.StringVar(&device, "device", "", "Device name")
