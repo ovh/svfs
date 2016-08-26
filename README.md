@@ -1,5 +1,6 @@
 # The Swift Virtual File System
 
+[![Release](https://badge.fury.io/gh/ovh%2Fsvfs.svg)](https://github.com/ovh/svfs/releases)
 [![Build Status](https://travis-ci.org/ovh/svfs.svg?branch=master)](https://travis-ci.org/ovh/svfs)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ovh/svfs)](https://goreportcard.com/report/github.com/ovh/svfs)
 [![Coverage Status](https://coveralls.io/repos/github/ovh/svfs/badge.svg?branch=master)](https://coveralls.io/github/ovh/svfs?branch=master)
