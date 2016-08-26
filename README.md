@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/ovh/svfs.svg?branch=master)](https://travis-ci.org/ovh/svfs)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ovh/svfs)](https://goreportcard.com/report/github.com/ovh/svfs)
+[![Coverage Status](https://coveralls.io/repos/github/ovh/svfs/badge.svg?branch=master)](https://coveralls.io/github/ovh/svfs?branch=master)
 [![GoDoc](https://godoc.org/github.com/ovh/svfs/svfs?status.svg)](https://godoc.org/github.com/ovh/svfs/svfs)
 
 **SVFS** is a Virtual File System over Openstack Swift built upon fuse. It is compatible with [hubiC](https://hubic.com),

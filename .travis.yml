@@ -1,14 +1,19 @@
 language: go
+
 go:
-  - 1.6.3
   - 1.7
   - tip
 
 os:
   - linux
-  - osx
+
+before_install:
+  - go get github.com/mattn/goveralls
+  - go get golang.org/x/tools/cmd/cover
+
+install: true
 
 script:
   - go install
-
-install: true
+  - go test -v -covermode=count -coverprofile=profile.cov github.com/ovh/svfs/svfs
+  - $HOME/gopath/bin/goveralls -coverprofile=profile.cov -service=svfs
