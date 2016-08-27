@@ -20,22 +20,11 @@ Download and install the latest [release](https://github.com/ovh/svfs/releases) 
 
 ## Usage
 
-You can either use standard mount conventions or use the svfs binary directly.
+#### Traditional mount
 
 Using the mount command :
 ```
 mount -t svfs -o username=..,password=..,tenant=..,region=..,container=.. myName /mountpoint
-```
-
-Using `/etc/fstab` :
-```
-myName   /mountpoint   svfs   username=..,password=..,tenant=..,region=..,container=..  0 0
-```
-
-Using svfs directly :
-
-```
-svfs mount --device myName --mountpoint /mountpoint --os-username=.. --os-password=.. ... &
 ```
 
 With OSX after [osxfuse](https://github.com/osxfuse/osxfuse), ruby and last pkg installation :
@@ -44,6 +33,27 @@ With OSX after [osxfuse](https://github.com/osxfuse/osxfuse), ruby and last pkg 
 mount_svfs myName /mountpoint -o username=..,password=..,tenant=..,region=..,container=..
 ```
 
+#### Custom mount
+
+You can also mount your containers using configuration file or environment variables for your credentials or mandatory options.
+So, the options can be not set with `mount` command directly.
+
+The `svfs.yml` must be stored in `/etc/` or your home directory.
+
+Example of supported options:
+```yaml
+$ cat /etc/svfs.yml
+OS_AUTH_URL:
+OS_CONTAINER_NAME:
+OS_TENANT_NAME:
+OS_USERNAME:
+OS_PASSWORD:
+OS_REGION_NAME:
+```
+
+Environment variables are the same as the configuration file and you can source directly the `openrc` file, it's OpenStack compliant.
+
+(If you use the traditional way to mount, using options directly in arguments, your extra configuration will be not used).
 
 ## Usage with OVH products
 
