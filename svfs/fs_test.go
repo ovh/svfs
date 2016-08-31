@@ -42,7 +42,7 @@ func testFsInit(t *testing.T) {
 
 		// Default options
 		ExtraAttr = true
-		TransferMode = false
+		TransferMode = 0
 		CacheMaxEntries = -1
 		CacheMaxAccess = -1
 		CacheTimeout = 15 * time.Minute

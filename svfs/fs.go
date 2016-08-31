@@ -7,6 +7,16 @@ import (
 	"golang.org/x/net/context"
 )
 
+const (
+	// SkipCreate is a flag indicating that new files should not be explicitely
+	// created. File creation will only take place upon the first write(2) call.
+	SkipCreate = 1 << 0
+	// SkipMkdir is a flag indicating that directories should not be explicitely
+	// created. Directory creation will only implicitely happen upon file creation
+	// within this directory or one of its subdirectories.
+	SkipMkdir = 1 << 1
+)
+
 var (
 	// SwiftConnection represents a connection to a swift provider.
 	// It should be ready for authentication before initializing svfs.
@@ -39,10 +49,10 @@ var (
 	ReadAheadSize uint
 	// ReadOnly represents the filesystem readonly access mode activation.
 	ReadOnly bool
-	// TransferMode represents a mode of operation enabled by the user to indicate
-	// that svfs will interact only with processes transferring files. This is seen
-	// as an opportunity to optimize network access by reducing requests to Swift.
-	TransferMode bool
+	// TransferMode represents a certain mode of operation defined by a combination
+	// of flags. Each flag enables an optimization that can be used by storage
+	// synchronization processes in order to reduce network access.
+	TransferMode int
 )
 
 // SVFS implements the Swift Virtual File System.

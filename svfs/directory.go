@@ -63,7 +63,7 @@ func (d *Directory) Create(ctx context.Context, req *fuse.CreateRequest, resp *f
 
 	// Don't create an empty file in transfer mode since we assume the file
 	// has been created to be immediately written to with some content.
-	if !TransferMode {
+	if TransferMode&SkipCreate == 0 {
 		err := SwiftConnection.ObjectPutBytes(node.c.Name, node.path, nil, "")
 		if err != nil {
 			return nil, nil, err
@@ -255,7 +255,7 @@ func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node,
 	absPath := d.path + req.Name + "/"
 
 	// Create the file in swift
-	if !TransferMode {
+	if TransferMode&SkipMkdir == 0 {
 		if err := SwiftConnection.ObjectPutBytes(d.c.Name, absPath, nil, dirContentType); err != nil {
 			return nil, fuse.EIO
 		}

@@ -117,9 +117,9 @@ Segment size should not exceed 5 GB.
 * `readahead_size`: Readahead size in KB. Default is 128 KB.
 * `readdir`: Overall concurrency factor when listing segmented objects in directories (default is 20).
 * `extra_attr`: Fetch extended attributes.
-* `transfer_mode`: Enable or disable transfer mode. When using transfer mode, svfs will make assumptions
-to speed up some operations by reducing network I/O but it may break system calls used besides this context.
-Default is false.
+* `transfer_mode`: Enforce network transfer optimizations. The following flags / features can be combined :
+ - `1` : disable explicit empty file creation.
+ - `2` : disable explicit directory creation.
 
 #### Cache options
 

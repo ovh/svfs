@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"net/http"
-	_ "net/http/pprof"
+	_ "net/http/pprof" // profiling server
 	"os"
 	"runtime/pprof"
 	"time"
@@ -169,7 +169,7 @@ func setFlags() {
 	flags.BoolVar(&svfs.ExtraAttr, "readdir-extra-attributes", false, "Fetch extra attributes")
 	flags.UintVar(&svfs.BlockSize, "block-size", 4096, "Block size in bytes")
 	flags.UintVar(&svfs.ReadAheadSize, "readahead-size", 128, "Per file readhead size in KiB")
-	flags.BoolVar(&svfs.TransferMode, "transfer-mode", false, "Enable transfer mode")
+	flags.IntVar(&svfs.TransferMode, "transfer-mode", 0, "Transfer optimizations mode")
 
 	// Cache Options
 	flags.DurationVar(&svfs.CacheTimeout, "cache-ttl", 1*time.Minute, "Cache timeout")
