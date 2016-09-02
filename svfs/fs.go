@@ -15,6 +15,9 @@ const (
 	// created. Directory creation will only implicitely happen upon file creation
 	// within this directory or one of its subdirectories.
 	SkipMkdir = 1 << 1
+	// SkipRmdir is a flag indicating that directory removal should not check
+	// wether a directory is empty before removing it.
+	SkipRmdir = 1 << 2
 )
 
 var (

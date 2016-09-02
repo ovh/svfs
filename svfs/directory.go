@@ -295,12 +295,14 @@ func (d *Directory) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 	)
 
 	if directory, ok := node.(*Directory); ok {
-		empty, err := directory.isEmpty()
-		if err != nil {
-			return err
-		}
-		if !empty {
-			return fuse.ENOTEMPTY
+		if TransferMode&SkipRmdir == 0 {
+			empty, err := directory.isEmpty()
+			if err != nil {
+				return err
+			}
+			if !empty {
+				return fuse.ENOTEMPTY
+			}
 		}
 		return d.removeDirectory(directory, req.Name)
 	}

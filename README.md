@@ -120,6 +120,7 @@ Segment size should not exceed 5 GB.
 * `transfer_mode`: Enforce network transfer optimizations. The following flags / features can be combined :
  - `1` : disable explicit empty file creation.
  - `2` : disable explicit directory creation.
+ - `4` : disable directory content check on removal.
 
 #### Cache options
 
