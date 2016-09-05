@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require 'erb'
+
 # Package dependencies
 DEPENDENCIES = {
   'fuse'  => '> 2.8',
@@ -12,6 +14,9 @@ TARGETS = [
     'deb' => ['386', 'amd64', 'armhf', 'armel'],
     'rpm' => ['386', 'amd64'],
   },
+  'darwin'  => {
+    'pkg' => ['386', 'amd64']
+  },
 ]
 
 # ARM versions mapping for go build
@@ -20,7 +25,7 @@ ARM_VERSIONS = {
   'armel' => 5,
 }
 
-FILES = {
+FILES_LINUX = {
   "scripts/hubic-application.rb" => {
     :target => "/usr/local/bin/hubic-application",
     :mode   => 0755,
@@ -31,13 +36,51 @@ FILES = {
   }
 }
 
+FILES_MACOS = {
+  "scripts/hubic-application.rb" => {
+    :target => "/usr/local/bin/hubic-application",
+    :mode => 0755,
+  },
+  "scripts/mount.svfs" => {
+    :target => "/usr/local/bin/mount_svfs",
+    :mode => 0755,
+  }
+}
+
+class PackageInfo
+  def initialize(version, content_path)
+    @version = version
+    @template = File.read("scripts/PackageInfo.erb")
+    @size = directory_size(content_path)
+  end
+
+  def render
+    ERB.new(@template).result(binding)
+  end
+
+  def save(file)
+    File.open(file, "w+") do |f|
+      f.write(render)
+    end
+  end
+
+  # Return directory size in KBytes
+  def directory_size(path)
+    size=0
+    Dir.glob(File.join(path, '**', '*')) { |file| size+=File.size(file) }
+    return (size/1024)
+  end
+end
+
 def build(package, type, version, os, arch, deps)
   # Extra package files
   file_mapping = ""
 
-  FILES.each do |file, spec|
-    File.chmod(spec[:mode], file)
-    file_mapping << "#{file}=#{spec[:target]} "
+  if os != "darwin"
+    FILES_LINUX.each do |file, spec|
+      File.chmod(spec[:mode], file)
+      file_mapping << "#{file}=#{spec[:target]} "
+    end
   end
 
   # Dependencies
@@ -58,25 +101,56 @@ def build(package, type, version, os, arch, deps)
   sh %{GOARCH=#{go_arch} GOOS=#{os} #{go_extra} go build -o #{go_build_target}}
   File.chmod(0755, go_build_target)
 
-  sh %W{fpm
-    --force
-    -s dir
-    -t #{type}
-    -a #{arch}
-    -n #{package[:name]}
-    -p #{package[:path]}
-    #{pkg_deps}
-    --maintainer "#{package[:maintainer]}"
-    --description "#{package[:info]}"
-    --license "#{package[:licence]}"
-    --url "#{package[:url]}"
-    --vendor "#{package[:vendor]}"
-    --version "#{version}"
-    --deb-use-file-permissions
-    --rpm-use-file-permissions
-    #{file_mapping}
-    #{go_build_target}=/usr/local/bin/#{package[:name]}
-  }.join(' ')
+  if os == "darwin"
+    root_dir = "root-pkg"
+    pkg_path = "#{package[:path]}/svfs.pkg"
+    bin_path = "#{package[:path]}/#{root_dir}/usr/local/bin"
+
+    mkdir_p bin_path
+    mkdir_p pkg_path
+
+    # Generate the payload
+    FILES_MACOS.each do |file, spec|
+      File.chmod(spec[:mode], file)
+      cp "#{file}", "#{package[:path]}/#{root_dir}#{spec[:target]}"
+    end
+    cp go_build_target, "#{bin_path}/svfs"
+    system("( cd #{package[:path]}/#{root_dir} && find . | cpio -o --format odc --owner 0:80 | gzip -c ) > #{pkg_path}/Payload")
+
+    # Generate the package description
+    pkg_info = PackageInfo.new(version, "#{package[:path]}/#{root_dir}")
+    pkg_info.save("#{pkg_path}/PackageInfo")
+
+    # Generate the Bill Of Materials
+    system("mkbom -u 0 -g 80 #{package[:path]}/#{root_dir} #{pkg_path}/Bom")
+
+    # Build the resulting pkg
+    system("( cd #{pkg_path} && xar --compression none -cf \"../#{package[:name]}-#{version}-#{arch}.pkg\" * )")
+
+    # Clean
+    rm_r(pkg_path, :force => true)
+    rm_r("#{package[:path]}/#{root_dir}", :force => true)
+  else
+   sh %W{fpm
+     --force
+     -s dir
+     -t #{type}
+     -a #{arch}
+     -n #{package[:name]}
+     -p #{package[:path]}
+     #{pkg_deps}
+     --maintainer "#{package[:maintainer]}"
+     --description "#{package[:info]}"
+     --license "#{package[:licence]}"
+     --url "#{package[:url]}"
+     --vendor "#{package[:vendor]}"
+     --version "#{version}"
+     --deb-use-file-permissions
+     --rpm-use-file-permissions
+     #{file_mapping}
+     #{go_build_target}=/usr/local/bin/#{package[:name]}
+   }.join(' ')
+  end
 
   File.delete(go_build_target)
 end
