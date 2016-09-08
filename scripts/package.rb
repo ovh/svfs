@@ -48,9 +48,9 @@ FILES_MACOS = {
 }
 
 class PackageInfo
-  def initialize(version, content_path)
+  def initialize(version, content_path, template)
     @version = version
-    @template = File.read("scripts/PackageInfo.erb")
+    @template = template
     @size = directory_size(content_path)
   end
 
@@ -67,6 +67,9 @@ class PackageInfo
   # Return directory size in KBytes
   def directory_size(path)
     size=0
+    if path.nil?
+      return size
+    end
     Dir.glob(File.join(path, '**', '*')) { |file| size+=File.size(file) }
     return (size/1024)
   end
@@ -118,7 +121,8 @@ def build(package, type, version, os, arch, deps)
     system("( cd #{package[:path]}/#{root_dir} && find . | cpio -o --format odc --owner 0:80 | gzip -c ) > #{pkg_path}/Payload")
 
     # Generate the package description
-    pkg_info = PackageInfo.new(version, "#{package[:path]}/#{root_dir}")
+    template = File.read("scripts/PackageInfo.erb")
+    pkg_info = PackageInfo.new(version, "#{package[:path]}/#{root_dir}", template)
     pkg_info.save("#{pkg_path}/PackageInfo")
 
     # Generate the Bill Of Materials
@@ -153,6 +157,12 @@ def build(package, type, version, os, arch, deps)
   end
 
   File.delete(go_build_target)
+end
+
+def gen_dockerfile(version)
+  template = File.read("scripts/Dockerfile.erb")
+  dockerfile = PackageInfo.new(version, nil, template)
+  dockerfile.save("docker/Dockerfile")
 end
 
 def release(package, version)

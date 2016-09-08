@@ -39,10 +39,13 @@ task :release, [:version] => [:prepare_release] do |t, args|
   new_source = source.gsub(/Version = "[^\"]+"/,"Version = \"#{args.version}\"")
   File.open("svfs/version.go", "w") { |file| file << new_source }
 
+  # Generate Dockerfile
+  gen_dockerfile(args.version)
+
   # Push on master and wait for build to complete
   g = Git.open("#{ENV['GOPATH']}/src/github.com/ovh/svfs", :log => Logger.new(STDOUT))
   g.checkout(:master)
-  g.add(['docs/RELEASE.md', 'svfs/version.go'])
+  g.add(['docs/RELEASE.md', 'svfs/version.go', 'docker/Dockerfile'])
   g.commit(["Release #{args.version}",
     "",
     "Signed-off-by: #{g.config('user.name')} <#{g.config('user.email')}>",
