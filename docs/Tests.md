@@ -9,7 +9,7 @@ When contributing to svfs, you'll have to make sure you contribution doesn't bre
 
 In order to test features against a remote Swift storage, tests use your environment for authentication :
 
-- Set `SVFS_TEST_AUTH` to either `HUBIC`, `OPENRC` or `TOKEN`.
+- Set `SVFS_TEST_AUTH` to either `HUBIC` or `OPENRC`.
 - Set relevant variables as described below.
 
 #### HubiC
@@ -27,13 +27,6 @@ SVFS_TEST_USERNAME
 SVFS_TEST_PASSWORD
 SVFS_TEST_TENANT_NAME
 SVFS_TEST_REGION_NAME
-```
-
-#### Token and storage URL
-
-```
-SVFS_TEST_AUTH_TOKEN
-SVFS_TEST_STORAGE_URL
 ```
 
 #### Execution

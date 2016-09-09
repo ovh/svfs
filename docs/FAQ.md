@@ -71,4 +71,4 @@ Yes, pick the latest pkg, install it with ruby and [osxfuse](https://github.com/
 
 ### How can I launch or write unit tests ?
 
-You just have to follow [unit tests guidelines](docs/Unit-tests.md).
+You just have to follow [unit tests guidelines](Tests.md).
