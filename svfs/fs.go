@@ -26,6 +26,9 @@ var (
 	SwiftConnection = new(swift.Connection)
 	// TargetContainer is an existing container ready to be served.
 	TargetContainer string
+	// StoragePolicy represents a storage policy configured by the
+	// storage provider.
+	StoragePolicy string
 	// ExtraAttr represents extra attributes fetching mode activation.
 	ExtraAttr bool
 	// HubicTimes represents the usage of hubiC synchronization clients

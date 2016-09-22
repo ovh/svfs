@@ -14,6 +14,7 @@ import (
 
 const (
 	segmentContainerSuffix = "_segments"
+	storagePolicyHeader    = "X-Storage-Policy"
 )
 
 var (
@@ -38,7 +39,11 @@ func (r *Root) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, erro
 	)
 
 	for _, name := range []string{req.Name, segmentContainer} {
-		err := SwiftConnection.ContainerCreate(name, nil)
+		headers := make(map[string]string)
+		if StoragePolicy != "" {
+			headers[storagePolicyHeader] = StoragePolicy
+		}
+		err := SwiftConnection.ContainerCreate(name, headers)
 		if err != nil {
 			return nil, err
 		}
@@ -108,6 +113,15 @@ func (r *Root) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, err er
 	// Sort base and segment containers
 	for _, segmentContainer := range cs {
 		s := segmentContainer
+		if StoragePolicy != "" {
+			_, headers, err := SwiftConnection.Container(s.Name)
+			if err != nil {
+				return nil, err
+			}
+			if headers[storagePolicyHeader] != StoragePolicy {
+				continue
+			}
+		}
 		if !segmentRegex.Match([]byte(s.Name)) {
 			baseContainers[s.Name] = &s
 			continue

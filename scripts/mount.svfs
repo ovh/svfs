@@ -41,6 +41,7 @@ OPTIONS = {
     'request_timeout'   => '--os-request-timeout',
     'ro'                => '--read-only',
     'segment_size'      => '--os-segment-size',
+    'storage_policy'    => '--os-storage-policy',
     'storage_url'       => '--os-storage-url',
     'tenant'            => '--os-tenant-name',
     'token'             => '--os-auth-token',

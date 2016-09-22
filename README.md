@@ -104,6 +104,8 @@ should also be set for this to work.
 #### Swift options
 
 * `container`: which container should be selected while mounting the filesystem. If not set,
+* `storage_policy`: expected containers storage policy. This is used to ignore containers
+not matching a particular storage policy name. If empty, this setting is ignored (default).
 all containers within the tenant will be available under the chosen mountpoint.
 * `segment_size`: large object segments size in MB. When an object has a content larger than
 this setting, it will be uploaded in multiple parts of the specified size. Default is 256 MB.

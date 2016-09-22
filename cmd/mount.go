@@ -148,6 +148,7 @@ func setFlags() {
 	flags.DurationVar(&svfs.SwiftConnection.ConnectTimeout, "os-connect-timeout", 15*time.Second, "Swift connection timeout")
 	flags.DurationVar(&svfs.SwiftConnection.Timeout, "os-request-timeout", 5*time.Minute, "Swift operation timeout")
 	flags.Uint64Var(&svfs.SegmentSize, "os-segment-size", 256, "Swift segment size in MiB")
+	flags.StringVar(&svfs.StoragePolicy, "os-storage-policy", "", "Only show containers using this storage policy")
 	flags.StringVar(&swift.DefaultUserAgent, "user-agent", "svfs/"+svfs.Version, "Default User-Agent")
 
 	//HubiC options
