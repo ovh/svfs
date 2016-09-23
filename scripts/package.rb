@@ -97,8 +97,8 @@ def build(package, type, version, os, arch, deps)
     go_extra = "GOARM=#{ARM_VERSIONS[arch]}"
   end
 
-  go_build_target = "#{package[:path]}/go-#{package[:name]}-#{os}-#{arch}"
-  sh %{GOARCH=#{go_arch} GOOS=#{os} #{go_extra} go build -o #{go_build_target}}
+  go_build_target = "#{package[:path]}/#{package[:name]}-#{os}-#{arch}"
+  sh %{CGO_ENABLED=0 GOARCH=#{go_arch} GOOS=#{os} #{go_extra} go build -o #{go_build_target}}
   File.chmod(0755, go_build_target)
 
   if os == "darwin"
@@ -151,8 +151,6 @@ def build(package, type, version, os, arch, deps)
      #{go_build_target}=/usr/local/bin/#{package[:name]}
    }.join(' ')
   end
-
-  File.delete(go_build_target)
 end
 
 def release(package, version)
