@@ -11,11 +11,11 @@ DEPENDENCIES = {
 # Target platforms and architectures
 TARGETS = [
   'linux'   => {
-    'deb' => ['386', 'amd64', 'armhf', 'armel'],
-    'rpm' => ['386', 'amd64'],
+    'deb' => ['i386', 'amd64', 'armhf', 'armel'],
+    'rpm' => ['i386', 'amd64'],
   },
   'darwin'  => {
-    'pkg' => ['386', 'amd64']
+    'pkg' => ['i386', 'amd64']
   },
 ]
 
@@ -97,6 +97,10 @@ def build(package, type, version, os, arch, deps)
     go_extra = "GOARM=#{ARM_VERSIONS[arch]}"
   end
 
+  if arch == 'i386'
+    go_arch = '386'
+  end
+
   go_build_target = "#{package[:path]}/#{package[:name]}-#{os}-#{arch}"
   sh %{CGO_ENABLED=0 GOARCH=#{go_arch} GOOS=#{os} #{go_extra} go build -o #{go_build_target}}
   File.chmod(0755, go_build_target)
@@ -131,25 +135,25 @@ def build(package, type, version, os, arch, deps)
     rm_r(pkg_path, :force => true)
     rm_r("#{package[:path]}/#{root_dir}", :force => true)
   else
-   sh %W{fpm
-     --force
-     -s dir
-     -t #{type}
-     -a #{arch}
-     -n #{package[:name]}
-     -p #{package[:path]}
-     #{pkg_deps}
-     --maintainer "#{package[:maintainer]}"
-     --description "#{package[:info]}"
-     --license "#{package[:licence]}"
-     --url "#{package[:url]}"
-     --vendor "#{package[:vendor]}"
-     --version "#{version}"
-     --deb-use-file-permissions
-     --rpm-use-file-permissions
-     #{file_mapping}
-     #{go_build_target}=/usr/local/bin/#{package[:name]}
-   }.join(' ')
+    sh %W{fpm
+      --force
+      -s dir
+      -t #{type}
+      -a #{arch}
+      -n #{package[:name]}
+      -p #{package[:path]}
+      #{pkg_deps}
+      --maintainer "#{package[:maintainer]}"
+      --description "#{package[:info]}"
+      --license "#{package[:licence]}"
+      --url "#{package[:url]}"
+      --vendor "#{package[:vendor]}"
+      --version "#{version}"
+      --deb-use-file-permissions
+      --rpm-use-file-permissions
+      #{file_mapping}
+      #{go_build_target}=/usr/local/bin/#{package[:name]}
+    }.join(' ')
   end
 end
 
