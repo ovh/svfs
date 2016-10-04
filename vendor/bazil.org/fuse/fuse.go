@@ -342,6 +342,7 @@ const (
 	ENOTSUP   = Errno(syscall.ENOTSUP)
 	EEXIST    = Errno(syscall.EEXIST)
 	ENOTEMPTY = Errno(syscall.ENOTEMPTY)
+	EAGAIN    = Errno(syscall.EAGAIN)
 )
 
 // DefaultErrno is the errno used when error returned does not
@@ -357,6 +358,7 @@ var errnoNames = map[Errno]string{
 	EINTR:     "EINTR",
 	EEXIST:    "EEXIST",
 	ENOTEMPTY: "ENOTEMPTY",
+	EAGAIN:    "EAGAIN",
 }
 
 // Errno implements Error and ErrorNumber using a syscall.Errno.

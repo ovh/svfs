@@ -149,6 +149,16 @@ func (o *Object) open(mode fuse.OpenFlags, flags *fuse.OpenResponseFlags) (*Obje
 
 	// Supported flags
 	if mode.IsReadOnly() {
+		if TransferMode&SkipOpenRead == 0 {
+			rd, err := newReader(oh)
+			if err == swift.TooManyRequests {
+				return nil, fuse.EAGAIN
+			} else if err != nil {
+				return oh, err
+			}
+			oh.rd = rd
+		}
+
 		return oh, nil
 	}
 	if mode.IsWriteOnly() {

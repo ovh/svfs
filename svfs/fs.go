@@ -18,6 +18,8 @@ const (
 	// SkipRmdir is a flag indicating that directory removal should not check
 	// wether a directory is empty before removing it.
 	SkipRmdir = 1 << 2
+	// SkipOpenRead is a flag indicating that open(2) should not emit any read request.
+	SkipOpenRead = 1 << 3
 )
 
 var (

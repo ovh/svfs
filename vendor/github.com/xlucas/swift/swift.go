@@ -151,6 +151,7 @@ var (
 	TimeoutError        = newError(408, "Timeout when reading or writing data")
 	Forbidden           = newError(403, "Operation forbidden")
 	TooLargeObject      = newError(413, "Too Large Object")
+	TooManyRequests     = newError(429, "Too Many Requests")
 
 	// Mappings for authentication errors
 	authErrorMap = errorMap{
@@ -174,6 +175,7 @@ var (
 		404: ObjectNotFound,
 		413: TooLargeObject,
 		422: ObjectCorrupted,
+		429: TooManyRequests,
 	}
 )
 

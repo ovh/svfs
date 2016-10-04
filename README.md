@@ -123,6 +123,7 @@ Segment size should not exceed 5 GB.
  - `1` : disable explicit empty file creation.
  - `2` : disable explicit directory creation.
  - `4` : disable directory content check on removal.
+ - `8` : disable file check in read only opening.
 
 #### Cache options
 
