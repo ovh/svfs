@@ -59,6 +59,9 @@ var mountCmd = &cobra.Command{
 			setDebug()
 		}
 
+		// Mount time
+		svfs.MountTime = time.Now()
+
 		// Config validation
 		if configError != nil {
 			yellow := color.New(color.FgYellow).SprintFunc()

@@ -1,6 +1,8 @@
 package svfs
 
 import (
+	"time"
+
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"github.com/xlucas/swift"
@@ -38,7 +40,6 @@ var (
 	HubicTimes bool
 	// SegmentSize is the size of a segment in bytes.
 	SegmentSize uint64
-
 	// AllowRoot represents FUSE allow_root option.
 	AllowRoot bool
 	// AllowOther represents FUSE allow_other option.
@@ -61,6 +62,8 @@ var (
 	// of flags. Each flag enables an optimization that can be used by storage
 	// synchronization processes in order to reduce network access.
 	TransferMode int
+	// MountTime represents at what time the filesystem was mounted.
+	MountTime time.Time
 )
 
 // SVFS implements the Swift Virtual File System.
