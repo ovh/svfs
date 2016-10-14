@@ -5,7 +5,7 @@
 			"importpath": "bazil.org/fuse",
 			"repository": "https://github.com/bazil/fuse",
 			"vcs": "git",
-			"revision": "371fbbdaa8987b715bdd21d6adc4c9b20155f748",
+			"revision": "0a999da23695619c954d4bc8c67737f30a1b7cf9",
 			"branch": "master"
 		},
 		{
@@ -31,13 +31,6 @@
 			"revision": "dcfedd50ed5334f96adee43fc88518a4f095e15c",
 			"branch": "master",
 			"notests": true
-		},
-		{
-			"importpath": "github.com/bazil/fuse",
-			"repository": "https://github.com/bazil/fuse",
-			"vcs": "",
-			"revision": "37bfa8be929171feec943f3496bc4befdeaf10db",
-			"branch": "master"
 		},
 		{
 			"importpath": "github.com/coreos/go-etcd/etcd",
