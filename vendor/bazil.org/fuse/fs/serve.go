@@ -8,6 +8,7 @@ import (
 	"hash/fnv"
 	"io"
 	"log"
+	"log/syslog"
 	"reflect"
 	"runtime"
 	"strings"
@@ -856,8 +857,14 @@ func (c *Server) serve(r fuse.Request) {
 			buf := make([]byte, size)
 			n := runtime.Stack(buf, false)
 			buf = buf[:n]
-			log.Printf("fuse: panic in handler for %v: %v\n%s", r, rec, buf)
-			err := handlerPanickedError{
+			msg := fmt.Sprintf("fuse: panic in handler for %v: %v\n%s", r, rec, buf)
+			syslogger, err := syslog.New(syslog.LOG_ERR, "user")
+			if err == nil {
+				syslogger.Write([]byte(msg))
+				syslogger.Close()
+			}
+			log.Print(msg)
+			err = handlerPanickedError{
 				Request: r,
 				Err:     rec,
 			}

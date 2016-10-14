@@ -8,6 +8,7 @@ import (
 	"hash/fnv"
 	"io"
 	"log"
+	"log/syslog"
 	"reflect"
 	"runtime"
 	"strings"
@@ -91,6 +92,13 @@ type FSInodeGenerator interface {
 // simple, read-only filesystem.
 type Node interface {
 	// Attr fills attr with the standard metadata for the node.
+	//
+	// Fields with reasonable defaults are prepopulated. For example,
+	// all times are set to a fixed moment when the program started.
+	//
+	// If Inode is left as 0, a dynamic inode number is chosen.
+	//
+	// The result may be cached for the duration set in Valid.
 	Attr(ctx context.Context, attr *fuse.Attr) error
 }
 
@@ -849,8 +857,14 @@ func (c *Server) serve(r fuse.Request) {
 			buf := make([]byte, size)
 			n := runtime.Stack(buf, false)
 			buf = buf[:n]
-			log.Printf("fuse: panic in handler for %v: %v\n%s", r, rec, buf)
-			err := handlerPanickedError{
+			msg := fmt.Sprintf("fuse: panic in handler for %v: %v\n%s", r, rec, buf)
+			syslogger, err := syslog.New(syslog.LOG_ERR, "user")
+			if err == nil {
+				syslogger.Write([]byte(msg))
+				syslogger.Close()
+			}
+			log.Print(msg)
+			err = handlerPanickedError{
 				Request: r,
 				Err:     rec,
 			}
@@ -1192,6 +1206,12 @@ func (c *Server) handleRequest(ctx context.Context, node Node, snode *serveNode,
 		s := &fuse.ReadResponse{Data: make([]byte, 0, r.Size)}
 		if r.Dir {
 			if h, ok := handle.(HandleReadDirAller); ok {
+				// detect rewinddir(3) or similar seek and refresh
+				// contents
+				if r.Offset == 0 {
+					shandle.readData = nil
+				}
+
 				if shandle.readData == nil {
 					dirs, err := h.ReadDirAll(ctx)
 					if err != nil {
