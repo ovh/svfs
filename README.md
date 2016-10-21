@@ -164,7 +164,7 @@ only if it appears unused for 5 minutes.
 
 SVFS doesn't support :
 
-* Opening files in append mode.
+* Opening files in other modes than `O_CREAT`, `O_RDONLY` and `O_WRONLY`.
 * Moving directories.
 * Renaming containers.
 * SLO (but supports DLO).
