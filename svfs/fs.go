@@ -33,8 +33,10 @@ var (
 	// StoragePolicy represents a storage policy configured by the
 	// storage provider.
 	StoragePolicy string
-	// ExtraAttr represents extra attributes fetching mode activation.
-	ExtraAttr bool
+	// Attr represents base attributes fetching mode activation.
+	Attr bool
+	// Xattr represents extended attributes fetching mode activation.
+	Xattr bool
 	// HubicTimes represents the usage of hubiC synchronization clients
 	// meta headers to read and store file times.
 	HubicTimes bool

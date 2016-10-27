@@ -170,7 +170,8 @@ func setFlags() {
 
 	// Prefetch
 	flags.Uint64Var(&svfs.ListerConcurrency, "readdir-concurrency", 20, "Directory listing concurrency")
-	flags.BoolVar(&svfs.ExtraAttr, "readdir-extra-attributes", false, "Fetch extra attributes")
+	flags.BoolVar(&svfs.Attr, "readdir-base-attributes", false, "Fetch base attributes")
+	flags.BoolVar(&svfs.Xattr, "readdir-extended-attributes", false, "Fetch extended attributes")
 	flags.UintVar(&svfs.BlockSize, "block-size", 4096, "Block size in bytes")
 	flags.UintVar(&svfs.ReadAheadSize, "readahead-size", 128, "Per file readhead size in KiB")
 	flags.IntVar(&svfs.TransferMode, "transfer-mode", 0, "Transfer optimizations mode")

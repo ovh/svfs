@@ -1,8 +1,12 @@
 package svfs
 
 import (
+	"bytes"
+	"encoding/hex"
 	"os"
 	"regexp"
+	"sort"
+	"strings"
 	"sync"
 
 	"bazil.org/fuse"
@@ -12,10 +16,11 @@ import (
 )
 
 const (
-	objContentType    = "application/octet-stream"
-	autoContentHeader = "X-Detect-Content-Type"
-	manifestHeader    = "X-Object-Manifest"
-	objectMetaHeader  = "X-Object-Meta-"
+	objContentType        = "application/octet-stream"
+	autoContentHeader     = "X-Detect-Content-Type"
+	manifestHeader        = "X-Object-Manifest"
+	objectMetaHeader      = "X-Object-Meta-"
+	objectMetaHeaderXattr = objectMetaHeader + "Xattr-"
 )
 
 var (
@@ -53,12 +58,49 @@ func (o *Object) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	return nil
 }
 
+// Getxattr retrieves extended attributes of an object node.
+func (o *Object) Getxattr(ctx context.Context, req *fuse.GetxattrRequest, resp *fuse.GetxattrResponse) error {
+	if !Xattr {
+		return fuse.ENOTSUP
+	}
+
+	key := canonicalHeaderKey(objectMetaHeaderXattr + req.Name)
+	value, err := hex.DecodeString(o.sh[key])
+	if err != nil {
+		return err
+	}
+
+	resp.Xattr = []byte(value)
+	return nil
+}
+
 // Export converts this object node as a direntry.
 func (o *Object) Export() fuse.Dirent {
 	return fuse.Dirent{
 		Name: o.Name(),
 		Type: fuse.DT_File,
 	}
+}
+
+// Listxattr lists extended attributes associated with this object node.
+func (o *Object) Listxattr(ctx context.Context, req *fuse.ListxattrRequest, resp *fuse.ListxattrResponse) error {
+	var keys []string
+
+	if !Xattr {
+		return fuse.ENOTSUP
+	}
+
+	for k := range o.sh.ObjectMetadataXattr().Headers(objectMetaHeaderXattr) {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		resp.Append(strings.TrimPrefix(key, objectMetaHeaderXattr))
+	}
+
+	return nil
 }
 
 // Open returns the file handle associated with this object node.
@@ -69,6 +111,30 @@ func (o *Object) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.Ope
 // Fsync synchronizes a file's in-core state with the storage device.
 // This is a no-op since we are in a network, fully synchronous, filesystem.
 func (o *Object) Fsync(ctx context.Context, req *fuse.FsyncRequest) error {
+	return nil
+}
+
+// Removexattr removes an extended attribute on this object node.
+func (o *Object) Removexattr(ctx context.Context, req *fuse.RemovexattrRequest) error {
+	if !Xattr {
+		return fuse.ENOTSUP
+	}
+
+	if _, ok := o.sh[objectMetaHeaderXattr+req.Name]; ok {
+		if o.writing {
+			o.m.Lock()
+			defer o.m.Unlock()
+		}
+		key := canonicalHeaderKey(objectMetaHeaderXattr + req.Name)
+		h := o.sh.ObjectMetadataXattr().Headers(objectMetaHeaderXattr)
+		delete(h, key)
+		delete(o.sh, key)
+		if o.segmented {
+			return SwiftConnection.ManifestUpdate(o.c.Name, o.so.Name, h)
+		}
+		return SwiftConnection.ObjectUpdate(o.c.Name, o.so.Name, h)
+	}
+
 	return nil
 }
 
@@ -85,7 +151,7 @@ func (o *Object) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fu
 		return nil
 	}
 
-	if !ExtraAttr || !req.Valid.Mtime() {
+	if !Attr || !req.Valid.Mtime() {
 		return fuse.ENOTSUP
 	}
 
@@ -98,6 +164,32 @@ func (o *Object) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fu
 		h := o.sh.ObjectMetadata().Headers(objectMetaHeader)
 		o.sh[objectMtimeHeader] = formatTime(req.Mtime)
 		h[objectMtimeHeader] = o.sh[objectMtimeHeader]
+		if o.segmented {
+			return SwiftConnection.ManifestUpdate(o.c.Name, o.so.Name, h)
+		}
+		return SwiftConnection.ObjectUpdate(o.c.Name, o.so.Name, h)
+	}
+
+	return nil
+}
+
+// Setxattr changes an extended attribute on the current node.
+func (o *Object) Setxattr(ctx context.Context, req *fuse.SetxattrRequest) error {
+	if !Xattr {
+		return fuse.ENOTSUP
+	}
+
+	if !bytes.Equal(req.Xattr, []byte(o.sh[objectMetaHeaderXattr+req.Name])) {
+		if o.writing {
+			o.m.Lock()
+			defer o.m.Unlock()
+		}
+		key := canonicalHeaderKey(objectMetaHeaderXattr + req.Name)
+		value := hex.EncodeToString(req.Xattr)
+		h := o.sh.ObjectMetadataXattr().Headers(objectMetaHeaderXattr)
+		o.sh[key] = value
+		h[key] = o.sh[key]
+
 		if o.segmented {
 			return SwiftConnection.ManifestUpdate(o.c.Name, o.so.Name, h)
 		}
@@ -210,8 +302,12 @@ func (o *Object) size() uint64 {
 }
 
 var (
-	_ Node             = (*Object)(nil)
-	_ fs.Node          = (*Object)(nil)
-	_ fs.NodeSetattrer = (*Object)(nil)
-	_ fs.NodeOpener    = (*Object)(nil)
+	_ Node                 = (*Object)(nil)
+	_ fs.Node              = (*Object)(nil)
+	_ fs.NodeGetxattrer    = (*Object)(nil)
+	_ fs.NodeListxattrer   = (*Object)(nil)
+	_ fs.NodeRemovexattrer = (*Object)(nil)
+	_ fs.NodeSetattrer     = (*Object)(nil)
+	_ fs.NodeSetxattrer    = (*Object)(nil)
+	_ fs.NodeOpener        = (*Object)(nil)
 )

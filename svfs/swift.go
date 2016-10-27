@@ -3,6 +3,7 @@ package svfs
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -10,6 +11,10 @@ import (
 
 	"github.com/xlucas/swift"
 )
+
+func canonicalHeaderKey(header string) string {
+	return http.CanonicalHeaderKey(strings.Replace(header, "_", "-", -1))
+}
 
 func newReader(fh *ObjectHandle) (io.ReadSeeker, error) {
 	rd, _, err := SwiftConnection.ObjectOpen(fh.target.c.Name, fh.target.path, false, nil)
@@ -70,7 +75,7 @@ func createSegment(container, prefix string, id *uint, uploaded *uint64) (io.Wri
 }
 
 func getMtime(object *swift.Object, headers swift.Headers) time.Time {
-	if ExtraAttr && len(headers) > 0 {
+	if Attr && len(headers) > 0 {
 		if HubicTimes {
 			if mtime, err := headers.ObjectMetadata().GetHubicModTime(); err == nil {
 				return mtime

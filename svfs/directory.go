@@ -2,11 +2,12 @@ package svfs
 
 import (
 	"fmt"
-	"github.com/xlucas/swift"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/xlucas/swift"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
@@ -186,7 +187,7 @@ func (d *Directory) ReadDirAll(ctx context.Context) (direntries []fuse.Dirent, e
 
 	finish:
 		// Always fetch extra info if asked
-		if child != nil && ExtraAttr {
+		if child != nil && (Attr || Xattr) {
 			directoryLister.AddTask(child, tasks)
 			child = nil
 			count++

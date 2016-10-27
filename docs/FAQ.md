@@ -27,7 +27,7 @@ ACL/extended attributes information, relatively to your local users and groups.
 
 By default, `rsync` works with *blocks*. SVFS abstracts *object* storage.
 You need to tell `rsync` to work with entire files :
-- mount your svfs device with `extra_attr` option
+- mount your svfs device with `attr` option
 - `rsync -rtW --inplace --progress <source> <destination>`
 - profit
 
@@ -48,7 +48,7 @@ per mountpoint options.
 
 Openstack Swift generates and stores modification time so that users can't change
 it. In svfs we use metadata to store this information if you supply a specific
-mount option (`extra_attr`). This has a performance impact since fetching
+mount option (`attr`). This has a performance impact since fetching
 metadata is only possible by requesting extra details on each node.
 So if you want the best performance, you shouldn't use it. Note that mtime
 can't be set on a directory/container/mountpoint because every change occuring

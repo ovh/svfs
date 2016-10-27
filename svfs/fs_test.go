@@ -41,7 +41,8 @@ func testFsInit(t *testing.T) {
 	if !SwiftConnection.Authenticated() {
 
 		// Default options
-		ExtraAttr = true
+		Attr = true
+		Xattr = true
 		TransferMode = 0
 		CacheMaxEntries = -1
 		CacheMaxAccess = -1

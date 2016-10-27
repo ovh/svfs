@@ -36,6 +36,13 @@ func TestObject(t *testing.T) {
 	t.Run("Object_OpenReadOnly", testObjectOpenReadOnly)
 	t.Run("ObjectHandle_Close", testObjectHandleClose)
 
+	// Setxattr
+	t.Run("Object_Setxattr", testObjectSetxattr)
+	t.Run("Object_Listxattr", testObjectListxattr)
+	t.Run("Object_Getxattr", testObjectGetxattr)
+	t.Run("Object_Removexattr", testObjectRemovexattr)
+	t.Run("Object_Getxattrm", testObjectGetxattrm)
+
 	t.Run("Directory_Remove", testDirectoryRemove)
 	t.Run("Container_Rmdir", testContainerRmdir)
 	t.Run("RootRemove", testRootRemove)
@@ -81,4 +88,52 @@ func testObjectOpenWriteOnly(t *testing.T) {
 	assert.True(t, rep.Flags&fuse.OpenNonSeekable != 0)
 
 	ctx.h, _ = fh.(*ObjectHandle)
+}
+
+func testObjectSetxattr(t *testing.T) {
+	xattrs := map[string]string{
+		"Key1": "Value1",
+		"Key2": "Value2",
+	}
+	for key, value := range xattrs {
+		req := &fuse.SetxattrRequest{Name: key, Xattr: []byte(value)}
+		err := ctx.f.Setxattr(nil, req)
+		assert.Nil(t, err)
+	}
+}
+
+func testObjectGetxattr(t *testing.T) {
+	req := &fuse.GetxattrRequest{Name: "Key1"}
+	rep := &fuse.GetxattrResponse{}
+
+	err := ctx.f.Getxattr(nil, req, rep)
+	assert.Nil(t, err)
+	assert.Equal(t, []byte("Value1"), rep.Xattr)
+}
+
+func testObjectRemovexattr(t *testing.T) {
+	req := &fuse.RemovexattrRequest{Name: "Key1"}
+
+	err := ctx.f.Removexattr(nil, req)
+	assert.Nil(t, err)
+}
+
+func testObjectGetxattrm(t *testing.T) {
+	req := &fuse.GetxattrRequest{Name: "Key1"}
+	rep := &fuse.GetxattrResponse{}
+
+	err := ctx.f.Getxattr(nil, req, rep)
+	assert.Nil(t, err)
+	assert.NotEqual(t, []byte("Value1"), rep.Xattr)
+}
+
+func testObjectListxattr(t *testing.T) {
+	req := &fuse.ListxattrRequest{Size: 2, Position: 0}
+	rep := &fuse.ListxattrResponse{}
+
+	err := ctx.f.Listxattr(nil, req, rep)
+	assert.Nil(t, err)
+	key1 := append([]byte("Key1"), '\x00')
+	key2 := append([]byte("Key2"), '\x00')
+	assert.Equal(t, append(key1, key2...), rep.Xattr)
 }

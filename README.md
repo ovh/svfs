@@ -98,7 +98,7 @@ not provided.
 #### Hubic options
 
 * `hubic_auth`: hubic authorization token as returned by the `hubic-application` command.
-* `hubic_times` : use file times set by hubic synchronization clients. Option `extra_attr`
+* `hubic_times` : use file times set by hubic synchronization clients. Option `attr`
 should also be set for this to work.
 * `hubic_token` : hubic refresh token as returned by the `hubic-application` command.
 
@@ -119,7 +119,8 @@ Segment size should not exceed 5 GB.
 * `block_size`: Filesystem block size in bytes. This is only used to report correct `stat()` results.
 * `readahead_size`: Readahead size in KB. Default is 128 KB.
 * `readdir`: Overall concurrency factor when listing segmented objects in directories (default is 20).
-* `extra_attr`: Fetch extended attributes.
+* `attr`: Handle base attributes.
+* `xattr`: Handle extended attributes.
 * `transfer_mode`: Enforce network transfer optimizations. The following flags / features can be combined :
  - `1` : disable explicit empty file creation.
  - `2` : disable explicit directory creation.

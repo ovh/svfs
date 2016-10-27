@@ -16,6 +16,7 @@ end
 OPTIONS = {
     'allow_other'       => '--allow-other',
     'allow_root'        => '--allow-root',
+    'attr'              => '--readdir-base-attributes',
     'auth_url'          => '--os-auth-url',
     'block_size'        => '--block-size',
     'cache_access'      => '--cache-max-access',
@@ -25,7 +26,6 @@ OPTIONS = {
     'container'         => '--os-container-name',
     'debug'             => '--debug',
     'default_perm'      => '--default-permissions',
-    'extra_attr'        => '--readdir-extra-attributes',
     'gid'               => '--default-gid',
     'hubic_auth'        => '--hubic-authorization',
     'hubic_times'       => '--hubic-times',
@@ -49,6 +49,7 @@ OPTIONS = {
     'uid'               => '--default-uid',
     'username'          => '--os-username',
     'version'           => '--os-auth-version',
+    'xattr'             => '--readdir-extended-attributes',
 }
 
 if ARGV.length != 2 && (ARGV.length != 4 || ARGV[2] != "-o")
