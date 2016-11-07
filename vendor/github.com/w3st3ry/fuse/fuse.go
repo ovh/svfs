@@ -235,7 +235,7 @@ func initMount(c *Conn, conf *mountConfig) error {
 	s := &InitResponse{
 		Library:      proto,
 		MaxReadahead: conf.maxReadahead,
-		MaxWrite:     128 * 1024,
+		MaxWrite:     maxWrite,
 		Flags:        InitBigWrites | conf.initFlags,
 	}
 	r.Respond(s)
@@ -338,9 +338,11 @@ const (
 	// See also fs.Intr.
 	EINTR = Errno(syscall.EINTR)
 
-	ERANGE  = Errno(syscall.ERANGE)
-	ENOTSUP = Errno(syscall.ENOTSUP)
-	EEXIST  = Errno(syscall.EEXIST)
+	ERANGE    = Errno(syscall.ERANGE)
+	ENOTSUP   = Errno(syscall.ENOTSUP)
+	EEXIST    = Errno(syscall.EEXIST)
+	ENOTEMPTY = Errno(syscall.ENOTEMPTY)
+	EAGAIN    = Errno(syscall.EAGAIN)
 )
 
 // DefaultErrno is the errno used when error returned does not
@@ -348,13 +350,15 @@ const (
 const DefaultErrno = EIO
 
 var errnoNames = map[Errno]string{
-	ENOSYS: "ENOSYS",
-	ESTALE: "ESTALE",
-	ENOENT: "ENOENT",
-	EIO:    "EIO",
-	EPERM:  "EPERM",
-	EINTR:  "EINTR",
-	EEXIST: "EEXIST",
+	ENOSYS:    "ENOSYS",
+	ESTALE:    "ESTALE",
+	ENOENT:    "ENOENT",
+	EIO:       "EIO",
+	EPERM:     "EPERM",
+	EINTR:     "EINTR",
+	EEXIST:    "EEXIST",
+	ENOTEMPTY: "ENOTEMPTY",
+	EAGAIN:    "EAGAIN",
 }
 
 // Errno implements Error and ErrorNumber using a syscall.Errno.
@@ -402,9 +406,6 @@ func (h *Header) RespondError(err error) {
 	hOut.Error = -int32(errno)
 	h.respond(buf)
 }
-
-// Maximum file write size we are prepared to receive from the kernel.
-const maxWrite = 16 * 1024 * 1024
 
 // All requests read from the kernel, without data, are shorter than
 // this.
@@ -1326,7 +1327,7 @@ type Attr struct {
 	Ctime     time.Time   // time of last inode change
 	Crtime    time.Time   // time of creation (OS X only)
 	Mode      os.FileMode // file mode
-	Nlink     uint32      // number of links
+	Nlink     uint32      // number of links (usually 1)
 	Uid       uint32      // owner uid
 	Gid       uint32      // group gid
 	Rdev      uint32      // device numbers
