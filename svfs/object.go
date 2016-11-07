@@ -66,6 +66,12 @@ func (o *Object) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.Ope
 	return o.open(req.Flags, &resp.Flags)
 }
 
+// Fsync synchronizes a file's in-core state with the storage device.
+// This is a no-op since we are in a network, fully synchronous, filesystem.
+func (o *Object) Fsync(ctx context.Context, req *fuse.FsyncRequest) error {
+	return nil
+}
+
 // Setattr changes file attributes on the current node.
 func (o *Object) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fuse.SetattrResponse) error {
 	// Change file size. Depending on the plaform, it may notably
