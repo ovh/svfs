@@ -2,12 +2,11 @@ package svfs
 
 import (
 	"fmt"
+	"github.com/xlucas/swift"
 	"os"
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/xlucas/swift"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
@@ -44,7 +43,7 @@ func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
 
 	if d.so != nil {
 		a.Atime = time.Now()
-		a.Mtime = getMtime(d.so, d.sh)
+		a.Mtime = MountTime
 		a.Ctime = a.Mtime
 		a.Crtime = a.Mtime
 	}
