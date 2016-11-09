@@ -49,6 +49,14 @@ func (h Headers) ObjectMetadata() Metadata {
 	return h.Metadata("X-Object-Meta-")
 }
 
+// ObjectMetadataXattr converts Headers from object to a Metadata only
+// containing extended attributes.
+//
+// The keys in the Metadata extra attributes will be converted to lower case.
+func (h Headers) ObjectMetadataXattr() Metadata {
+	return h.Metadata("X-Object-Meta-Xattr-")
+}
+
 // Headers convert the Metadata starting with the metaPrefix into a
 // Headers.
 //
