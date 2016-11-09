@@ -133,13 +133,6 @@
 			"notests": true
 		},
 		{
-			"importpath": "github.com/ncw/swift",
-			"repository": "https://github.com/ncw/swift",
-			"vcs": "",
-			"revision": "77b213b0cd16b6f2f2146b7cc54a1aa8a5613b01",
-			"branch": "master"
-		},
-		{
 			"importpath": "github.com/russross/blackfriday",
 			"repository": "https://github.com/russross/blackfriday",
 			"vcs": "git",
