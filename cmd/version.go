@@ -61,7 +61,7 @@ var versionCmd = &cobra.Command{
 // Print release information.
 func printRelease(release *github.RepositoryRelease, err error) {
 	if err != nil {
-		color.Red("\nYour version is invalid! Check the error below.")
+		color.Red("\nYour version is invalid! Check the error below.\n%v", err)
 		return
 	}
 
