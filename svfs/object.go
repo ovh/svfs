@@ -82,6 +82,12 @@ func (o *Object) Export() fuse.Dirent {
 	}
 }
 
+// Fsync synchronizes a file's in-core state with the storage device.
+// This is a no-op since we are in a network, fully synchronous, filesystem.
+func (o *Object) Fsync(ctx context.Context, req *fuse.FsyncRequest) error {
+	return nil
+}
+
 // Listxattr lists extended attributes associated with this object node.
 func (o *Object) Listxattr(ctx context.Context, req *fuse.ListxattrRequest, resp *fuse.ListxattrResponse) error {
 	var keys []string
@@ -106,12 +112,6 @@ func (o *Object) Listxattr(ctx context.Context, req *fuse.ListxattrRequest, resp
 // Open returns the file handle associated with this object node.
 func (o *Object) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
 	return o.open(req.Flags, &resp.Flags)
-}
-
-// Fsync synchronizes a file's in-core state with the storage device.
-// This is a no-op since we are in a network, fully synchronous, filesystem.
-func (o *Object) Fsync(ctx context.Context, req *fuse.FsyncRequest) error {
-	return nil
 }
 
 // Removexattr removes an extended attribute on this object node.
@@ -304,6 +304,7 @@ func (o *Object) size() uint64 {
 var (
 	_ Node                 = (*Object)(nil)
 	_ fs.Node              = (*Object)(nil)
+	_ fs.NodeFsyncer       = (*Object)(nil)
 	_ fs.NodeGetxattrer    = (*Object)(nil)
 	_ fs.NodeListxattrer   = (*Object)(nil)
 	_ fs.NodeRemovexattrer = (*Object)(nil)
