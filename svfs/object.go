@@ -1,8 +1,10 @@
 package svfs
 
 import (
+	"bytes"
 	"os"
 	"regexp"
+	"strings"
 	"sync"
 
 	"bazil.org/fuse"
@@ -12,10 +14,11 @@ import (
 )
 
 const (
-	objContentType    = "application/octet-stream"
-	autoContentHeader = "X-Detect-Content-Type"
-	manifestHeader    = "X-Object-Manifest"
-	objectMetaHeader  = "X-Object-Meta-"
+	objContentType        = "application/octet-stream"
+	autoContentHeader     = "X-Detect-Content-Type"
+	manifestHeader        = "X-Object-Manifest"
+	objectMetaHeader      = "X-Object-Meta-"
+	objectMetaHeaderXattr = objectMetaHeader + "Xattr-"
 )
 
 var (
@@ -50,6 +53,12 @@ func (o *Object) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	a.Mtime = getMtime(o.so, o.sh)
 	a.Ctime = a.Mtime
 	a.Crtime = a.Mtime
+	return nil
+}
+
+// Getxattr fills the files extra-attributes for an object node.
+func (o *Object) Getxattr(ctx context.Context, req *fuse.GetxattrRequest, resp *fuse.GetxattrResponse) error {
+	resp.Xattr = []byte(o.sh[objectMetaHeaderXattr+req.Name])
 	return nil
 }
 
@@ -102,6 +111,66 @@ func (o *Object) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fu
 			return SwiftConnection.ManifestUpdate(o.c.Name, o.so.Name, h)
 		}
 		return SwiftConnection.ObjectUpdate(o.c.Name, o.so.Name, h)
+	}
+
+	return nil
+}
+
+// Setxattr changes file extra-attributes on the current node.
+func (o *Object) Setxattr(ctx context.Context, req *fuse.SetxattrRequest) error {
+	if !ExtraAttr {
+		return fuse.ENOTSUP
+	}
+
+	if !bytes.Equal(req.Xattr, []byte(o.sh[objectMetaHeaderXattr+req.Name])) {
+		if o.writing {
+			o.m.Lock()
+			defer o.m.Unlock()
+		}
+		h := o.sh.ObjectMetadataXattr().Headers(objectMetaHeaderXattr)
+		o.sh[objectMetaHeaderXattr+req.Name] = string(req.Xattr)
+		h[objectMetaHeaderXattr+req.Name] = o.sh[objectMetaHeaderXattr+req.Name]
+		if o.segmented {
+			return SwiftConnection.ManifestUpdate(o.c.Name, o.so.Name, h)
+		}
+		return SwiftConnection.ObjectUpdate(o.c.Name, o.so.Name, h)
+	}
+
+	return nil
+}
+
+// Removexattr removes an extended attribute for the name.
+func (o *Object) Removexattr(ctx context.Context, req *fuse.RemovexattrRequest) error {
+	if !ExtraAttr {
+		return fuse.ENOTSUP
+	}
+
+	if _, ok := o.sh[objectMetaHeaderXattr+req.Name]; ok {
+		if o.writing {
+			o.m.Lock()
+			defer o.m.Unlock()
+		}
+		h := o.sh.ObjectMetadataXattr().Headers(objectMetaHeaderXattr)
+		delete(h, objectMetaHeaderXattr+req.Name)
+		delete(o.sh, objectMetaHeaderXattr+req.Name)
+		if o.segmented {
+			return SwiftConnection.ManifestUpdate(o.c.Name, o.so.Name, h)
+		}
+		return SwiftConnection.ObjectUpdate(o.c.Name, o.so.Name, h)
+	}
+
+	return nil
+}
+
+// Listxattr lists extended attributes recorded for the node.
+func (o *Object) Listxattr(ctx context.Context, req *fuse.ListxattrRequest, resp *fuse.ListxattrResponse) error {
+	if !ExtraAttr {
+		return fuse.ENOTSUP
+	}
+
+	h := o.sh.ObjectMetadataXattr().Headers(objectMetaHeader)
+	for key := range h {
+		resp.Append(strings.TrimPrefix(key, objectMetaHeaderXattr))
 	}
 
 	return nil
