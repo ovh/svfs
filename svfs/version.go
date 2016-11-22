@@ -1,4 +1,4 @@
 package svfs
 
 // Version is the current SVFS version
-const Version = "0.8.2"
+const Version = "0.9.0"
