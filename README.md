@@ -138,8 +138,8 @@ Segment size should not exceed 5 GB.
 * `allow_other`: Bypass `allow_root`.
 * `allow_root`: Restrict access to root and the user mounting the filesystem.
 * `default_perm`: Restrict access based on file mode (useful with `allow_other`).
-* `uid`: default files uid (default is 0 i.e. root).
-* `gid`: default files gid (default is 0 i.e. root).
+* `uid`: default files uid (defaults to current user uid).
+* `gid`: default files gid (defaults to current user gid).
 * `mode`: default files permissions (default is 0700).
 * `ro`: enable read-only access.
 

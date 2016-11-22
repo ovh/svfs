@@ -5,7 +5,9 @@ import (
 	"net/http"
 	_ "net/http/pprof" // profiling server
 	"os"
+	"os/user"
 	"runtime/pprof"
+	"strconv"
 	"time"
 
 	fuse "bazil.org/fuse"
@@ -22,6 +24,8 @@ import (
 var (
 	configError error
 	debug       bool
+	gid         uint64
+	uid         uint64
 	fs          svfs.SVFS
 	srv         *fusefs.Server
 	profAddr    string
@@ -41,6 +45,17 @@ func init() {
 	formatter.FullTimestamp = true
 	logrus.SetFormatter(formatter)
 	logrus.SetOutput(os.Stdout)
+
+	// Uid & Gid
+	currentUser, err := user.Current()
+	if err != nil {
+		gid = 0
+		uid = 0
+	} else {
+		// Non-parsable uid & gid should never be seen
+		gid, _ = strconv.ParseUint(currentUser.Gid, 10, 64)
+		uid, _ = strconv.ParseUint(currentUser.Uid, 10, 64)
+	}
 
 	setFlags()
 	RootCmd.AddCommand(mountCmd)
@@ -160,8 +175,8 @@ func setFlags() {
 	flags.BoolVar(&svfs.HubicTimes, "hubic-times", false, "Use file times set by hubiC synchronization clients")
 
 	// Permissions
-	flags.Uint64Var(&svfs.DefaultUID, "default-uid", 0, "Default UID (default 0)")
-	flags.Uint64Var(&svfs.DefaultGID, "default-gid", 0, "Default GID (default 0)")
+	flags.Uint64Var(&svfs.DefaultUID, "default-uid", uid, "Default UID")
+	flags.Uint64Var(&svfs.DefaultGID, "default-gid", gid, "Default GID")
 	flags.Uint64Var(&svfs.DefaultMode, "default-mode", 0700, "Default permissions")
 	flags.BoolVar(&svfs.AllowRoot, "allow-root", false, "Fuse allow-root option")
 	flags.BoolVar(&svfs.AllowOther, "allow-other", true, "Fuse allow_other option")
