@@ -76,6 +76,7 @@ task :release, [:version] => [:prepare_release] do |t, args|
     File.delete(file)
   end
 
+  rm_rf path
   g.checkout(:master)
 end
 
