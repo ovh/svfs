@@ -146,6 +146,8 @@ Segment size should not exceed 5 GB.
 #### Debug options
 
 * `debug`: enable debug log.
+* `stdout` : stdout redirection expression (e.g. `>/dev/null`).
+* `stderr` : stderr redirection expression (e.g. `>>/var/log/svfs.log`).
 * `profile_addr`: Golang profiling information will be served at this address (`ip:port`) if set.
 * `profile_cpu`: Golang CPU profiling information will be stored to this file if set.
 * `profile_ram`: Golang RAM profiling information will be stored to this file if set.

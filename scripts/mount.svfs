@@ -57,10 +57,16 @@ if ARGV.length != 2 && (ARGV.length != 4 || ARGV[2] != "-o")
   abort
 end
 
-mount_dev = ARGV[0]
-mount_dir = ARGV[1]
-opts      = ARGV[3].nil? ? ['rw'] : ARGV[3].split(',')
-extra     = ""
+mount_dev     = ARGV[0]
+mount_dir     = ARGV[1]
+opts          = ARGV[3].nil? ? ['rw'] : ARGV[3].split(',')
+extra_prefix  = ""
+extra_suffix  = ""
+
+OUTPUTS = {
+  "stdout" => 1,
+  "stderr" => 2,
+}
 
 opts.select! do |o|
   part = o.partition('=')
@@ -68,13 +74,17 @@ opts.select! do |o|
   if opt_key == "go_gc"
     extra = "GOGC=#{part.last}"
   end
+  if OUTPUTS.has_key?(opt_key)
+    extra_suffix += " #{OUTPUTS[opt_key]}#{part.last}"
+  end
   if OPTIONS.has_key?(opt_key)
     o[opt_key] = OPTIONS[opt_key]
   end
 end
 
-if extra.empty?
-  extra = "GOGC=60"
+if extra_prefix.empty?
+  extra_prefix = "GOGC=60"
 end
 
-system("#{extra} svfs mount --device #{mount_dev} --mountpoint #{mount_dir} #{opts.join(' ')} &")
+
+system("#{extra_prefix} svfs mount --device #{mount_dev} --mountpoint #{mount_dir} #{opts.join(' ')} #{extra_suffix} &")
