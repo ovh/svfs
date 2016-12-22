@@ -30,6 +30,7 @@ OPTIONS = {
     'hubic_auth'        => '--hubic-authorization',
     'hubic_times'       => '--hubic-times',
     'hubic_token'       => '--hubic-refresh-token',
+    'ip'                => '--client-ip',
     'mode'              => '--default-mode',
     'password'          => '--os-password',
     'profile_addr'      => '--profile-bind',

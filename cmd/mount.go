@@ -168,6 +168,7 @@ func setFlags() {
 	flags.Uint64Var(&svfs.SegmentSize, "os-segment-size", 256, "Swift segment size in MiB")
 	flags.StringVar(&svfs.StoragePolicy, "os-storage-policy", "", "Only show containers using this storage policy")
 	flags.StringVar(&swift.DefaultUserAgent, "user-agent", "svfs/"+svfs.Version, "Default User-Agent")
+	flags.StringVar(&swift.ClientIP, "client-ip", "", "Client IP")
 
 	//HubiC options
 	flags.StringVar(&svfs.HubicAuthorization, "hubic-authorization", "", "hubiC authorization code")

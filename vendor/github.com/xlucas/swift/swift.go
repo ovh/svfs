@@ -23,6 +23,7 @@ import (
 
 var (
 	DefaultUserAgent = "goswift/1.0"
+	ClientIP         = ""
 )
 
 const (
@@ -508,6 +509,11 @@ func (c *Connection) Call(targetUrl string, p RequestOpts) (resp *http.Response,
 		}
 		req.Header.Add("User-Agent", c.UserAgent)
 		req.Header.Add("X-Auth-Token", authToken)
+
+		if ClientIP != "" {
+			req.Header.Add("X-Forwarded-For", ClientIP)
+		}
+
 		resp, err = c.doTimeoutRequest(timer, req)
 		if err != nil {
 			if (p.Operation == "HEAD" || p.Operation == "GET") && retries > 0 {
