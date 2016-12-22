@@ -35,7 +35,11 @@ func initSegment(c, prefix string, id *uint, t *swift.Object, d []byte, up *uint
 }
 
 func createContainer(name string) (*swift.Container, error) {
-	err := SwiftConnection.ContainerCreate(name, nil)
+	headers := make(map[string]string)
+	if StoragePolicy != "" {
+		headers[storagePolicyHeader] = StoragePolicy
+	}
+	err := SwiftConnection.ContainerCreate(name, headers)
 	if err != nil {
 		return nil, err
 	}

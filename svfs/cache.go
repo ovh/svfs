@@ -212,6 +212,7 @@ func (c *Cache) Set(container, path, name string, node Node) {
 // only relying on a hashmap with basic functions.
 type SimpleCache struct {
 	changes map[string]Node
+	mutex   sync.Mutex
 }
 
 // NewSimpleCache creates a new simplistic cache.
@@ -227,20 +228,28 @@ func (c *SimpleCache) key(container, path string) string {
 
 // Add pushes a new cache entry.
 func (c *SimpleCache) Add(container, path string, node Node) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	c.changes[c.key(container, path)] = node
 }
 
 // Exist checks whether a cache key exist or not.
 func (c *SimpleCache) Exist(container, path string) bool {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	return c.changes[c.key(container, path)] != nil
 }
 
 // Get retrieves a cache entry for the given key.
 func (c *SimpleCache) Get(container, path string) Node {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	return c.changes[c.key(container, path)]
 }
 
 // Remove pops the cache entry at this key.
 func (c *SimpleCache) Remove(container, path string) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	delete(c.changes, c.key(container, path))
 }
