@@ -25,6 +25,14 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/ahmetalpbalkan/go-linq",
+			"repository": "https://github.com/ahmetalpbalkan/go-linq",
+			"vcs": "git",
+			"revision": "ca3ce1b64da26806bdd9f97c3d433f47f98dd588",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/armon/consul-api",
 			"repository": "https://github.com/armon/consul-api",
 			"vcs": "git",
@@ -189,48 +197,11 @@
 			"notests": true
 		},
 		{
-			"importpath": "github.com/stretchr/testify/assert",
+			"importpath": "github.com/stretchr/testify",
 			"repository": "https://github.com/stretchr/testify",
 			"vcs": "git",
-			"revision": "d77da356e56a7428ad25149ca77381849a6a5232",
+			"revision": "2402e8e7a02fc811447d11f881aa9746cdc57983",
 			"branch": "master",
-			"path": "assert",
-			"notests": true
-		},
-		{
-			"importpath": "github.com/stretchr/testify/require",
-			"repository": "https://github.com/stretchr/testify",
-			"vcs": "git",
-			"revision": "d77da356e56a7428ad25149ca77381849a6a5232",
-			"branch": "master",
-			"path": "/require",
-			"notests": true
-		},
-		{
-			"importpath": "github.com/stretchr/testify/suite",
-			"repository": "https://github.com/stretchr/testify",
-			"vcs": "git",
-			"revision": "d77da356e56a7428ad25149ca77381849a6a5232",
-			"branch": "master",
-			"path": "/suite",
-			"notests": true
-		},
-		{
-			"importpath": "github.com/stretchr/testify/vendor/github.com/davecgh/go-spew/spew",
-			"repository": "https://github.com/stretchr/testify",
-			"vcs": "git",
-			"revision": "d77da356e56a7428ad25149ca77381849a6a5232",
-			"branch": "master",
-			"path": "vendor/github.com/davecgh/go-spew/spew",
-			"notests": true
-		},
-		{
-			"importpath": "github.com/stretchr/testify/vendor/github.com/pmezard/go-difflib/difflib",
-			"repository": "https://github.com/stretchr/testify",
-			"vcs": "git",
-			"revision": "d77da356e56a7428ad25149ca77381849a6a5232",
-			"branch": "master",
-			"path": "vendor/github.com/pmezard/go-difflib/difflib",
 			"notests": true
 		},
 		{
@@ -324,6 +295,14 @@
 			"vcs": "git",
 			"revision": "31e6fd4bd5a98d8ee7673d24bc54ec73c31810dd",
 			"branch": "master",
+			"notests": true
+		},
+		{
+			"importpath": "gopkg.in/jarcoal/httpmock.v1",
+			"repository": "https://gopkg.in/jarcoal/httpmock.v1",
+			"vcs": "git",
+			"revision": "6aa33143427f6eb0bebcc0af42e8db85e39a42c0",
+			"branch": "v1",
 			"notests": true
 		},
 		{
