@@ -32,7 +32,7 @@ func (suite *ConnectionTestSuite) SetupSuite() {
 			StorageUrl: MockedStorageURL,
 			Transport:  httpmock.DefaultTransport,
 		},
-		StoragePolicy: "Policy",
+		StoragePolicy: "Policy1",
 	}
 	suite.list = ContainerList{
 		"container": &Container{
@@ -42,7 +42,7 @@ func (suite *ConnectionTestSuite) SetupSuite() {
 				Count: 100,
 			},
 			lib.Headers{
-				StoragePolicyHeader: "Policy",
+				StoragePolicyHeader: "Policy1",
 			},
 		},
 	}

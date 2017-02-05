@@ -23,28 +23,25 @@ func NewLogicalContainer(con *Connection, storagePolicy,
 	mainContainerName string) (container *LogicalContainer, err error,
 ) {
 	segmentContainerName := mainContainerName + SegmentContainerSuffix
+	containers := []string{mainContainerName, segmentContainerName}
 
-	for _, name := range []string{mainContainerName, segmentContainerName} {
+	for _, name := range containers {
 		err = con.ContainerCreate(name,
-			lib.Headers{StoragePolicyHeader: storagePolicy})
+			lib.Headers{
+				StoragePolicyHeader: storagePolicy,
+			})
 		if err != nil {
 			return
 		}
 	}
+
+	list, err := con.getContainersByNames(containers)
+
 	container = &LogicalContainer{
-		MainContainer: &Container{
-			&lib.Container{
-				Name: mainContainerName,
-			},
-			lib.Headers{},
-		},
-		SegmentContainer: &Container{
-			&lib.Container{
-				Name: segmentContainerName,
-			},
-			lib.Headers{},
-		},
+		MainContainer:    list[mainContainerName],
+		SegmentContainer: list[segmentContainerName],
 	}
+
 	return
 }
 

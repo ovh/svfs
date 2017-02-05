@@ -36,7 +36,7 @@ func (suite *FsTestSuite) SetupSuite() {
 				Bytes: 16384,
 				Count: 200,
 			},
-			Headers: lib.Headers{swift.StoragePolicyHeader: "PCS"},
+			Headers: lib.Headers{swift.StoragePolicyHeader: "Policy1"},
 		},
 		SegmentContainer: &swift.Container{
 			Container: &lib.Container{
@@ -44,7 +44,7 @@ func (suite *FsTestSuite) SetupSuite() {
 				Bytes: 32768,
 				Count: 500,
 			},
-			Headers: lib.Headers{swift.StoragePolicyHeader: "PCS"},
+			Headers: lib.Headers{swift.StoragePolicyHeader: "Policy1"},
 		},
 	}
 	suite.list = swift.ContainerList{
@@ -62,7 +62,7 @@ func (suite *FsTestSuite) SetupTest() {
 		BlockSize:     uint64(4096),
 		Container:     "container",
 		Connections:   uint32(1),
-		StoragePolicy: "PCS",
+		StoragePolicy: "Policy1",
 		OsStorageURL:  swift.MockedStorageURL,
 		OsAuthToken:   swift.MockedToken,
 	}
