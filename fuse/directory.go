@@ -12,12 +12,12 @@ type Directory struct {
 	sfs.Directory
 }
 
-func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) (err error) {
-	attr, err := d.Directory.(sfs.Node).GetAttr()
-	if err != nil {
-		return
-	}
+func (d *Directory) Lookup(ctx context.Context, name string) (fs.Node, error) {
+	return nil, fuse.ENOENT
+}
 
+func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
+	attr, err := d.Directory.(sfs.Node).GetAttr()
 	a.Atime = attr.Atime
 	a.Ctime = attr.Ctime
 	a.Crtime = attr.Ctime
@@ -27,9 +27,18 @@ func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) (err error) {
 	a.Gid = attr.Gid
 	a.Size = attr.Size
 
-	return
+	return err
+}
+
+func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (
+	fs.Node, error,
+) {
+	dir, err := d.Directory.Mkdir(req.Name)
+	return &Directory{dir}, err
 }
 
 var (
-	_ fs.Node = (*Directory)(nil)
+	_ fs.NodeStringLookuper = (*Directory)(nil)
+	_ fs.NodeMkdirer        = (*Directory)(nil)
+	_ fs.Node               = (*Directory)(nil)
 )

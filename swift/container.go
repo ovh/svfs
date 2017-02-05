@@ -1,7 +1,10 @@
 package swift
 
 import (
+	"math"
+	"strconv"
 	"strings"
+	"time"
 
 	. "github.com/ahmetalpbalkan/go-linq"
 	lib "github.com/xlucas/swift"
@@ -11,6 +14,23 @@ import (
 type Container struct {
 	*lib.Container
 	lib.Headers
+}
+
+func (c *Container) timestamp() (secs int64, nsecs int64, err error) {
+	timestamp, err := strconv.ParseFloat(c.Headers[TimestampHeader], 64)
+	if err != nil {
+		return
+	}
+
+	secs = int64(timestamp)
+	nsecs = int64((timestamp - float64(secs)) * math.Pow10(9))
+
+	return
+}
+
+func (c *Container) CreationTime() (t time.Time) {
+	secs, nsecs, _ := c.timestamp()
+	return time.Unix(secs, nsecs)
 }
 
 func (c *Container) SelectHeaders(prefix string) lib.Headers {

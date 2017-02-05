@@ -1,6 +1,10 @@
 package swift
 
-import lib "github.com/xlucas/swift"
+import (
+	"time"
+
+	lib "github.com/xlucas/swift"
+)
 
 const (
 	SegmentContainerSuffix = "_segments"
@@ -46,4 +50,8 @@ func NewLogicalContainer(con *Connection, storagePolicy,
 
 func (c *LogicalContainer) Bytes() int64 {
 	return c.MainContainer.Bytes + c.SegmentContainer.Bytes
+}
+
+func (c *LogicalContainer) CreationTime() time.Time {
+	return c.MainContainer.CreationTime()
 }

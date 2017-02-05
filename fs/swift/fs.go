@@ -2,6 +2,7 @@ package swift
 
 import (
 	"math"
+	"os"
 	"time"
 
 	"github.com/ovh/svfs/fs"
@@ -9,38 +10,52 @@ import (
 	lib "github.com/xlucas/swift"
 )
 
-const (
-	BlockSizeOption fs.MountOption = iota
-	ContainerOption
-	StoragePolicyOption
-	UseFileAttributesOption
-	UseFileXAttributesOption
-	UseHubicTimesOption
-	MaxConnections
-	StorageUrlOption
-	TokenOption
-)
+type FsConfiguration struct {
+	BlockSize         uint64
+	Perms             os.FileMode
+	Gid               uint32
+	Uid               uint32
+	Size              uint64
+	StoragePolicy     string
+	Container         string
+	Attributes        bool
+	XAttributes       bool
+	Connections       uint32
+	OsAuthToken       string
+	OsAuthURL         string
+	OsUserName        string
+	OsPassword        string
+	OsStorageURL      string
+	OsTenantName      string
+	OsRegionName      string
+	HubicAuthToken    string
+	HubicRefreshToken string
+}
 
 type Fs struct {
+	conf      *FsConfiguration
 	mountTime time.Time
-	options   *OptionHolder
 	storage   *swift.ResourceHolder
 }
 
-func (sfs *Fs) Setup(opts fs.MountOptions) (err error) {
+func (sfs *Fs) Setup(conf interface{}) (err error) {
 	sfs.mountTime = time.Now()
-	sfs.options = NewOptionHolder(opts)
+	sfs.conf = conf.(*FsConfiguration)
 
-	sfs.storage = swift.NewResourceHolder(sfs.options.GetUint32(MaxConnections),
-		&swift.Connection{
-			&lib.Connection{
-				StorageUrl: sfs.options.GetString(StorageUrlOption),
-				AuthToken:  sfs.options.GetString(TokenOption),
-			},
-			sfs.options.GetString(StoragePolicyOption),
-		},
+	con := &lib.Connection{
+		AuthUrl:    sfs.conf.OsAuthURL,
+		ApiKey:     sfs.conf.OsPassword,
+		UserName:   sfs.conf.OsUserName,
+		Tenant:     sfs.conf.OsTenantName,
+		StorageUrl: sfs.conf.OsStorageURL,
+		AuthToken:  sfs.conf.OsAuthToken,
+	}
+
+	sfs.storage = swift.NewResourceHolder(sfs.conf.Connections,
+		&swift.Connection{con, sfs.conf.StoragePolicy},
 	)
-	return
+
+	return con.Authenticate()
 }
 
 func (sfs *Fs) Root() (dir fs.Directory, err error) {
@@ -60,7 +75,7 @@ func (sfs *Fs) Root() (dir fs.Directory, err error) {
 
 func (sfs *Fs) StatFs() (stats *fs.FsStats, err error) {
 	stats = &fs.FsStats{
-		BlockSize: sfs.options.GetUint64(BlockSizeOption),
+		BlockSize: sfs.conf.BlockSize,
 	}
 
 	account, container, err := sfs.getFsRoot()
@@ -84,10 +99,8 @@ func (sfs *Fs) getFsRoot() (account *swift.Account,
 	if err != nil {
 		return
 	}
-	if sfs.options.IsSet(ContainerOption) {
-		container, err = con.LogicalContainer(
-			sfs.options.GetString(ContainerOption),
-		)
+	if sfs.conf.Container != "" {
+		container, err = con.LogicalContainer(sfs.conf.Container)
 	}
 
 	return
@@ -114,7 +127,7 @@ func (sfs *Fs) getQuotaFreeSpace(stats *fs.FsStats, account *swift.Account,
 	quotaFreeSpace := uint64(account.Quota - account.BytesUsed)
 	stats.BlocksFree = quotaFreeSpace / stats.BlockSize
 
-	if sfs.options.IsSet(ContainerOption) {
+	if sfs.conf.Container != "" {
 		// Device block count is the sum of quota free blocks plus container
 		// used blocks.
 		stats.Blocks = quotaFreeSpace/stats.BlockSize + stats.BlocksUsed
@@ -128,7 +141,7 @@ func (sfs *Fs) getQuotaFreeSpace(stats *fs.FsStats, account *swift.Account,
 func (sfs *Fs) getUsage(stats *fs.FsStats, account *swift.Account,
 	container *swift.LogicalContainer,
 ) {
-	if sfs.options.IsSet(ContainerOption) {
+	if sfs.conf.Container != "" {
 		sfs.getContainerUsage(stats, container)
 	} else {
 		sfs.getAccountUsage(stats, account)

@@ -1,8 +1,5 @@
 package fs
 
-type MountOption int
-type MountOptions map[MountOption]interface{}
-
 type FsStats struct {
 	Files      uint64
 	FilesFree  uint64
@@ -13,7 +10,7 @@ type FsStats struct {
 }
 
 type Fs interface {
-	Setup(opts MountOptions) error
+	Setup(conf interface{}) error
 	StatFs() (*FsStats, error)
 	Root() (Directory, error)
 }

@@ -1,6 +1,7 @@
 package swift
 
 import (
+	"os"
 	"time"
 
 	"github.com/ovh/svfs/fs"
@@ -19,7 +20,12 @@ func (c *Container) Create(nodeName string) (fs.File, error) {
 func (c *Container) GetAttr() (attr *fs.Attr, err error) {
 	attr = &fs.Attr{
 		Atime: time.Now(),
-		Mtime: c.Fs.mountTime,
+		Ctime: c.swiftContainer.CreationTime(),
+		Mtime: c.swiftContainer.CreationTime(),
+		Uid:   c.Fs.conf.Uid,
+		Gid:   c.Fs.conf.Gid,
+		Mode:  os.ModeDir | c.Fs.conf.Perms,
+		Size:  c.Fs.conf.BlockSize,
 	}
 
 	return

@@ -12,10 +12,9 @@ type SVFS struct {
 	sfs.Fs
 }
 
-func (svfs *SVFS) Root() (node fs.Node, err error) {
+func (svfs *SVFS) Root() (fs.Node, error) {
 	dir, err := svfs.Fs.Root()
-	node = &Directory{Directory: dir}
-	return
+	return &Directory{dir}, err
 }
 
 func (svfs *SVFS) Statfs(ctx context.Context, req *fuse.StatfsRequest,

@@ -3,6 +3,7 @@ package swift
 import (
 	"testing"
 
+	"github.com/ovh/svfs/util/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	lib "github.com/xlucas/swift"
@@ -24,6 +25,7 @@ func (suite *ContainerTestSuite) SetupSuite() {
 			"X-Container-Meta-2": "2",
 			"X-Container-Foo":    "foo",
 			"X-Container-Bar":    "bar",
+			"X-Timestamp":        "1446048898.88226",
 		},
 	}
 	suite.containerList = ContainerList{
@@ -44,6 +46,13 @@ func (suite *ContainerTestSuite) SetupSuite() {
 			},
 		},
 	}
+}
+
+func (suite *ContainerTestSuite) TestTimestamp() {
+	secs, nsecs, err := suite.container.timestamp()
+	assert.Nil(suite.T(), err)
+	test.EqualInt64(suite.T(), 1446048898, secs)
+	test.EqualInt64(suite.T(), 882260084, nsecs)
 }
 
 func (suite *ContainerTestSuite) TestFilterByStoragePolicy() {

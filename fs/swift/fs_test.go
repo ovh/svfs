@@ -58,16 +58,16 @@ func (suite *FsTestSuite) SetupTest() {
 		BlockSize: 4096,
 	}
 	suite.fs = new(Fs)
-	suite.fs.Setup(fs.MountOptions{
-		BlockSizeOption:     uint64(4096),
-		ContainerOption:     "container",
-		MaxConnections:      uint32(1),
-		StoragePolicyOption: "PCS",
-		StorageUrlOption:    swift.MockedStorageURL,
-		TokenOption:         swift.MockedToken,
-	})
+	suite.fs.conf = &FsConfiguration{
+		BlockSize:     uint64(4096),
+		Container:     "container",
+		Connections:   uint32(1),
+		StoragePolicy: "PCS",
+		OsStorageURL:  swift.MockedStorageURL,
+		OsAuthToken:   swift.MockedToken,
+	}
 	suite.fs.storage = swift.NewMockedConnectionHolder(1,
-		suite.fs.options.GetString(StoragePolicyOption),
+		suite.fs.conf.StoragePolicy,
 	)
 }
 
@@ -77,7 +77,7 @@ func (suite *FsTestSuite) TestGetUsage() {
 	test.EqualUint64(suite.T(), 12, suite.stats.BlocksUsed)
 
 	// File system without the container mount option
-	suite.fs.options.Unset(ContainerOption)
+	suite.fs.conf.Container = ""
 	suite.fs.getUsage(suite.stats, suite.account, suite.container)
 	test.EqualUint64(suite.T(), 16, suite.stats.BlocksUsed)
 }
@@ -101,7 +101,7 @@ func (suite *FsTestSuite) TestGetFreeSpace() {
 	test.EqualUint64(suite.T(), 18446744073709551415, suite.stats.FilesFree)
 
 	// Filesystem without the container mount option
-	suite.fs.options.Unset(ContainerOption)
+	suite.fs.conf.Container = ""
 
 	suite.account.Quota = 0
 	suite.fs.getUsage(suite.stats, suite.account, suite.container)
@@ -131,19 +131,19 @@ func (suite *FsTestSuite) TestGetFsRoot() {
 	)
 	swift.MockContainers(suite.list, swift.StatusMap{"HEAD": 200})
 
-	for _, option := range []interface{}{"container", nil} {
-		suite.fs.options.Set(ContainerOption, option)
+	for _, option := range []string{"container", ""} {
+		suite.fs.conf.Container = option
 		account, container, err := suite.fs.getFsRoot()
 		assert.Nil(suite.T(), err)
 		assert.NotNil(suite.T(), account)
-		if container != nil {
+		if option != "" {
 			assert.NotNil(suite.T(), container)
 		}
 	}
 
 	// Logical container is missing the segment container
 	suite.list["container_segments"] = nil
-	suite.fs.options.Set(ContainerOption, "container")
+	suite.fs.conf.Container = "container"
 	account, container, err := suite.fs.getFsRoot()
 	assert.Nil(suite.T(), err)
 	assert.NotNil(suite.T(), account)
@@ -154,19 +154,6 @@ func (suite *FsTestSuite) TestGetFsRoot() {
 		container.MainContainer.Headers[swift.StoragePolicyHeader],
 		container.SegmentContainer.Headers[swift.StoragePolicyHeader],
 	)
-}
-
-func (suite *FsTestSuite) TestUsesMountOption() {
-	// All mount options
-	assert.True(suite.T(), suite.fs.options.IsSet(ContainerOption))
-	assert.True(suite.T(), suite.fs.options.IsSet(StoragePolicyOption))
-
-	// No mount option
-	suite.fs.options.Unset(ContainerOption)
-	suite.fs.options.Unset(StoragePolicyOption)
-	assert.False(suite.T(), suite.fs.options.IsSet(ContainerOption))
-	assert.False(suite.T(), suite.fs.options.IsSet(StoragePolicyOption))
-
 }
 
 func TestRunFsSuite(t *testing.T) {

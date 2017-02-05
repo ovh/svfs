@@ -1,6 +1,7 @@
 package swift
 
 import (
+	"os"
 	"syscall"
 	"time"
 
@@ -18,10 +19,14 @@ func (a *Account) Create(nodeName string) (file fs.File, err error) {
 }
 
 func (a *Account) GetAttr() (attr *fs.Attr, err error) {
-
 	attr = &fs.Attr{
 		Atime: time.Now(),
-		Mtime: a.Fs.mountTime,
+		Ctime: a.swiftAccount.CreationTime(),
+		Mtime: a.swiftAccount.CreationTime(),
+		Uid:   a.Fs.conf.Uid,
+		Gid:   a.Fs.conf.Gid,
+		Mode:  os.ModeDir | a.Fs.conf.Perms,
+		Size:  a.Fs.conf.BlockSize,
 	}
 
 	return
@@ -31,22 +36,15 @@ func (a *Account) Hardlink(targetPath string, linkName string) error {
 	return syscall.ENOTSUP
 }
 
-func (a *Account) Mkdir(dirName string) (dir fs.Directory, err error) {
+func (a *Account) Mkdir(dirName string) (fs.Directory, error) {
 	con := a.storage.Borrow().(*swift.Connection)
 	defer a.storage.Return()
 
 	container, err := swift.NewLogicalContainer(
-		con,
-		a.Fs.options.GetString(StoragePolicyOption),
-		dirName,
+		con, a.Fs.conf.StoragePolicy, dirName,
 	)
-	if err != nil {
-		return
-	}
 
-	dir = &Container{swiftContainer: container}
-
-	return
+	return &Container{Fs: a.Fs, swiftContainer: container}, err
 }
 
 func (a *Account) Remove(node fs.Node) (err error) {
@@ -57,9 +55,7 @@ func (a *Account) Remove(node fs.Node) (err error) {
 	con := a.storage.Borrow().(*swift.Connection)
 	defer a.storage.Return()
 
-	err = con.DeleteLogicalContainer(node.(*Container).swiftContainer)
-
-	return
+	return con.DeleteLogicalContainer(node.(*Container).swiftContainer)
 }
 
 func (a *Account) Rename(newName string, newDir fs.Directory) error {
