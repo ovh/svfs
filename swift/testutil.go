@@ -98,5 +98,16 @@ func MockContainers(list ContainerList, status StatusMap) {
 				return
 			},
 		)
+		httpmock.RegisterResponder("DELETE", MockedStorageURL+"/"+name,
+			func(req *http.Request) (resp *http.Response, err error) {
+				code := status["DELETE"]
+				if c == nil {
+					code = 404
+				}
+				resp = httpmock.NewStringResponse(code, "")
+
+				return
+			},
+		)
 	}
 }
