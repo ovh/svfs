@@ -3,7 +3,6 @@ package swift
 import (
 	"testing"
 
-	"github.com/ovh/svfs/util/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	lib "github.com/xlucas/swift"
@@ -20,94 +19,134 @@ var (
 
 type ConnectionTestSuite struct {
 	suite.Suite
-	con  *Connection
-	list ContainerList
+	ts *MockedTestSet
 }
 
 func (suite *ConnectionTestSuite) SetupSuite() {
 	httpmock.Activate()
-	suite.con = &Connection{
-		Connection: &lib.Connection{
-			AuthToken:  MockedToken,
-			StorageUrl: MockedStorageURL,
-			Transport:  httpmock.DefaultTransport,
-		},
-		StoragePolicy: "Policy1",
-	}
-	suite.list = ContainerList{
-		"container": &Container{
-			&lib.Container{
-				Name:  "container",
-				Bytes: 1024,
-				Count: 100,
-			},
-			lib.Headers{
-				StoragePolicyHeader: "Policy1",
-			},
-		},
-	}
 }
 
 func (suite *ConnectionTestSuite) TearDownSuite() {
-	httpmock.Deactivate()
+	httpmock.DeactivateAndReset()
 }
 
 func (suite *ConnectionTestSuite) SetupTest() {
+	suite.ts = NewMockedTestSet()
 	httpmock.Reset()
+}
+
+func (suite *ConnectionTestSuite) TestAccount() {
+	for _, code := range []int{201, 400} {
+		suite.ts.MockAccount(StatusMap{"HEAD": code})
+		account, err := suite.ts.Connection.Account()
+
+		if code == 400 {
+			assert.NotNil(suite.T(), err)
+		}
+		if code == 200 {
+			assert.Nil(suite.T(), err)
+			assert.Equal(suite.T(), suite.ts.Account, account)
+		}
+	}
 }
 
 func (suite *ConnectionTestSuite) TestCreateContainers() {
 	for _, code := range []int{201, 400} {
-		MockAccount(nil, suite.list, StatusMap{"PUT": code})
+		suite.ts.MockAccount(StatusMap{"PUT": code})
 
-		err := suite.con.createContainers([]string{containerName})
+		err := suite.ts.Connection.createContainers([]string{containerName})
 
-		if code > 300 {
+		if code == 404 {
 			assert.NotNil(suite.T(), err)
 		}
-		if code >= 200 && code < 300 {
+		if code == 200 {
 			assert.Nil(suite.T(), err)
 		}
 	}
 
 }
 
-func (suite *ConnectionTestSuite) TestGetContainers() {
-	for _, list := range []ContainerList{suite.list, ContainerList{}} {
-		MockAccount(nil, list, StatusMap{"GET": 200})
+func (suite *ConnectionTestSuite) TestDeleteContainers() {
+	for _, code := range []int{200, 404} {
+		suite.ts.MockContainers(StatusMap{"DELETE": code})
 
-		containers, err := suite.con.getContainers()
-		assert.Nil(suite.T(), err)
+		err := suite.ts.Connection.deleteContainers([]string{containerName})
 
-		if len(list) == 0 {
-			assert.Len(suite.T(), containers, 0)
-		} else {
+		if code == 404 {
+			assert.NotNil(suite.T(), err)
+		}
+		if code == 200 {
 			assert.Nil(suite.T(), err)
-			assert.Len(suite.T(), containers, 1)
-			assert.Equal(suite.T(), containerName, containers[containerName].Name)
-			test.EqualInt64(suite.T(), 100, containers[containerName].Count)
-			test.EqualInt64(suite.T(), 1024, containers[containerName].Bytes)
+		}
+	}
+}
+
+func (suite *ConnectionTestSuite) TestDeleteLogicalContainer() {
+	for _, code := range []int{200, 500} {
+		suite.ts.MockContainers(StatusMap{"DELETE": code})
+
+		err := suite.ts.Connection.DeleteLogicalContainer(suite.ts.Container)
+
+		if code == 200 {
+			assert.Nil(suite.T(), err)
+		}
+		if code == 500 {
+			assert.NotNil(suite.T(), err)
+		}
+	}
+}
+
+func (suite *ConnectionTestSuite) TestGetContainers() {
+	for _, code := range []int{200, 500} {
+		for _, list := range []ContainerList{suite.ts.ContainerList, ContainerList{}} {
+			suite.ts.ContainerList = list
+			suite.ts.MockAccount(StatusMap{"GET": code})
+
+			containers, err := suite.ts.Connection.getContainers()
+
+			if code == 500 {
+				assert.NotNil(suite.T(), err)
+			}
+			if code == 200 {
+				assert.Nil(suite.T(), err)
+
+				if len(list) == 0 {
+					assert.Len(suite.T(), containers, 0)
+				} else {
+					assert.Nil(suite.T(), err)
+					assert.Len(suite.T(), containers, 2)
+					assert.EqualValues(suite.T(),
+						suite.ts.ContainerList[containerName].Container,
+						containers[containerName].Container)
+				}
+			}
 		}
 	}
 }
 
 func (suite *ConnectionTestSuite) TestGetContainersFromNames() {
-	for _, code := range []int{200, 404} {
-		MockContainers(suite.list, StatusMap{"HEAD": code})
+	for _, code := range []int{200, 404, 500} {
+		suite.ts.MockContainers(StatusMap{"HEAD": code})
 
-		list, err := suite.con.getContainersByNames([]string{containerName})
-		assert.Nil(suite.T(), err)
+		list, err := suite.ts.Connection.getContainersByNames(
+			[]string{containerName},
+		)
 
-		if code > 300 {
+		if code == 404 {
+			assert.Nil(suite.T(), err)
 			assert.Len(suite.T(), list, 0)
 		}
-		if code >= 200 && code < 300 {
+		if code == 500 {
+			assert.NotNil(suite.T(), err)
+		}
+		if code == 200 {
+			assert.Nil(suite.T(), err)
 			assert.Len(suite.T(), list, 1)
-			assert.Equal(suite.T(), containerName, list[containerName].Name)
-			test.EqualInt64(suite.T(), 1024, list[containerName].Bytes)
-			test.EqualInt64(suite.T(), 100, list[containerName].Count)
+			assert.EqualValues(suite.T(),
+				suite.ts.ContainerList[containerName],
+				list[containerName])
 			assert.Equal(suite.T(),
-				suite.con.StoragePolicy,
+				suite.ts.Connection.StoragePolicy,
 				list[containerName].Headers[StoragePolicyHeader],
 			)
 		}
@@ -115,35 +154,37 @@ func (suite *ConnectionTestSuite) TestGetContainersFromNames() {
 }
 
 func (suite *ConnectionTestSuite) TestLogicalContainer() {
-	suite.list[containerName+"_segments"] = &Container{
-		Container: &lib.Container{
-			Name:  containerName + "_segments",
-			Bytes: 4096,
-			Count: 500,
-		},
-		Headers: lib.Headers{
-			StoragePolicyHeader: suite.con.StoragePolicy,
-		},
-	}
+	listOfTwo := suite.ts.ContainerList
+	listOfOne := suite.ts.ContainerList
+	listOfOne[containerName+"_segments"] = nil
 
-	for _, code := range []int{200, 404} {
-		MockContainers(suite.list, StatusMap{"HEAD": code})
+	for _, accountCode := range []int{200, 500} {
+		for _, containerCode := range []int{200, 404, 500} {
+			for _, list := range []ContainerList{listOfTwo, listOfOne} {
+				suite.ts.ContainerList = list
+				suite.ts.MockAccount(StatusMap{"PUT": accountCode})
+				suite.ts.MockContainers(StatusMap{"HEAD": containerCode})
 
-		container, err := suite.con.LogicalContainer(containerName)
+				container, err := suite.ts.Connection.LogicalContainer(
+					containerName)
 
-		if code > 300 {
-			assert.NotNil(suite.T(), err)
+				if containerCode == 404 ||
+					containerCode == 500 ||
+					accountCode == 500 {
+					assert.NotNil(suite.T(), err)
+					continue
+				}
+				if containerCode == 200 {
+					assert.Nil(suite.T(), err)
+					assert.Equal(suite.T(),
+						containerName, container.MainContainer.Name)
+					assert.Equal(suite.T(),
+						containerName+"_segments",
+						container.SegmentContainer.Name)
+				}
+			}
 		}
-		if code >= 200 && code < 300 {
-			assert.Nil(suite.T(), err)
-
-			assert.Equal(suite.T(),
-				containerName, container.MainContainer.Name)
-			assert.Equal(suite.T(),
-				containerName+"_segments", container.SegmentContainer.Name)
-		}
 	}
-
 }
 
 func TestRunConnectionSuite(t *testing.T) {

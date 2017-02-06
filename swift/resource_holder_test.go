@@ -29,6 +29,28 @@ func (suite *ResourceHolderTestSuite) TestReturn() {
 	test.EqualUint32(suite.T(), 0, suite.holder.borrows)
 }
 
+func (suite *ResourceHolderTestSuite) TestOnReadLock() {
+	defer func() {
+		r := recover()
+		assert.NotNil(suite.T(), r)
+		assert.Equal(suite.T(), "read", r)
+	}()
+	suite.holder.onReadLock(func() {
+		panic("read")
+	})
+}
+
+func (suite *ResourceHolderTestSuite) TestOnWriteLock() {
+	defer func() {
+		r := recover()
+		assert.NotNil(suite.T(), r)
+		assert.Equal(suite.T(), "write", r)
+	}()
+	suite.holder.onWriteLock(func() {
+		panic("write")
+	})
+}
+
 func TestRunResourceHolderSuite(t *testing.T) {
 	suite.Run(t, new(ResourceHolderTestSuite))
 }

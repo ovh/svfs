@@ -2,6 +2,7 @@ package swift
 
 import (
 	"testing"
+	"time"
 
 	"github.com/ovh/svfs/util/test"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ type ContainerTestSuite struct {
 	containerList ContainerList
 }
 
-func (suite *ContainerTestSuite) SetupSuite() {
+func (suite *ContainerTestSuite) SetupTest() {
 	suite.container = &Container{
 		Container: &lib.Container{
 			Name: "container",
@@ -25,7 +26,7 @@ func (suite *ContainerTestSuite) SetupSuite() {
 			"X-Container-Meta-2": "2",
 			"X-Container-Foo":    "foo",
 			"X-Container-Bar":    "bar",
-			"X-Timestamp":        "1446048898.88226",
+			TimestampHeader:      "1446048898.88226",
 		},
 	}
 	suite.containerList = ContainerList{
@@ -34,7 +35,7 @@ func (suite *ContainerTestSuite) SetupSuite() {
 				Name: "container1",
 			},
 			lib.Headers{
-				"X-Storage-Policy": "Policy1",
+				StoragePolicyHeader: "Policy1",
 			},
 		},
 		"container2": &Container{
@@ -42,17 +43,29 @@ func (suite *ContainerTestSuite) SetupSuite() {
 				Name: "container2",
 			},
 			lib.Headers{
-				"X-Storage-Policy": "Policy2",
+				StoragePolicyHeader: "Policy2",
 			},
 		},
 	}
 }
 
+func (suite *ContainerTestSuite) TestCreationTime() {
+	expected := time.Unix(1446048898, 882260084)
+	actual := suite.container.CreationTime()
+	assert.Equal(suite.T(), expected, actual)
+}
+
 func (suite *ContainerTestSuite) TestTimestamp() {
+	// Valid timestamp
 	secs, nsecs, err := suite.container.timestamp()
 	assert.Nil(suite.T(), err)
 	test.EqualInt64(suite.T(), 1446048898, secs)
 	test.EqualInt64(suite.T(), 882260084, nsecs)
+
+	// Invalid timestamp
+	suite.container.Headers[TimestampHeader] = "invalid"
+	_, _, err = suite.container.timestamp()
+	assert.NotNil(suite.T(), err)
 }
 
 func (suite *ContainerTestSuite) TestFilterByStoragePolicy() {

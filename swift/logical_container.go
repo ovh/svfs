@@ -19,8 +19,8 @@ type LogicalContainer struct {
 	SegmentContainer *Container
 }
 
-func NewLogicalContainer(con *Connection, storagePolicy,
-	mainContainerName string) (container *LogicalContainer, err error,
+func NewLogicalContainer(con *Connection, mainContainerName string) (
+	container *LogicalContainer, err error,
 ) {
 	segmentContainerName := mainContainerName + SegmentContainerSuffix
 	containers := []string{mainContainerName, segmentContainerName}
@@ -28,7 +28,7 @@ func NewLogicalContainer(con *Connection, storagePolicy,
 	for _, name := range containers {
 		err = con.ContainerCreate(name,
 			lib.Headers{
-				StoragePolicyHeader: storagePolicy,
+				StoragePolicyHeader: con.StorageUrl,
 			})
 		if err != nil {
 			return

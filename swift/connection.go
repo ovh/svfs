@@ -68,6 +68,7 @@ func (con *Connection) getContainersByNames(names []string) (
 			Container: &container,
 			Headers:   headers,
 		}
+
 	}
 
 	if con.StoragePolicy != "" {
