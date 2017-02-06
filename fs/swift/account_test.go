@@ -2,6 +2,7 @@ package swift
 
 import (
 	"os"
+	"syscall"
 	"testing"
 
 	"github.com/ovh/svfs/swift"
@@ -80,6 +81,11 @@ func (suite *AccountTestSuite) SetupTest() {
 	suite.accountNode = &Account{Fs: suite.fs, swiftAccount: suite.account}
 }
 
+func (suite *AccountTestSuite) TestCreate() {
+	_, err := suite.accountNode.Create("file")
+	assert.NotNil(suite.T(), syscall.ENOTSUP, err)
+}
+
 func (suite *AccountTestSuite) TestGetAttr() {
 	attr, err := suite.accountNode.GetAttr()
 	assert.Nil(suite.T(), err)
@@ -91,6 +97,11 @@ func (suite *AccountTestSuite) TestGetAttr() {
 	test.EqualUint64(suite.T(), attr.Size, 4096)
 }
 
+func (suite *AccountTestSuite) TestHardlink() {
+	err := suite.accountNode.Hardlink("container", "hardlink")
+	assert.NotNil(suite.T(), syscall.ENOTSUP, err)
+}
+
 func (suite *AccountTestSuite) TestMkdir() {
 	swift.MockAccount(nil, suite.list, swift.StatusMap{"PUT": 200})
 	swift.MockContainers(suite.list, swift.StatusMap{"HEAD": 200})
@@ -100,6 +111,24 @@ func (suite *AccountTestSuite) TestMkdir() {
 	assert.IsType(suite.T(), &Container{}, dir)
 	container := dir.(*Container)
 	assert.EqualValues(suite.T(), suite.container, container.swiftContainer)
+}
+
+func (suite *AccountTestSuite) TestRemove() {
+	swift.MockContainers(suite.list, swift.StatusMap{"DELETE": 200})
+
+	containerNode := &Container{Fs: suite.fs, swiftContainer: suite.container}
+	err := suite.accountNode.Remove(containerNode)
+	assert.Nil(suite.T(), err)
+}
+
+func (suite *AccountTestSuite) TestRename() {
+	err := suite.accountNode.Rename(nil, "newName", suite.accountNode)
+	assert.Equal(suite.T(), syscall.ENOTSUP, err)
+}
+
+func (suite *AccountTestSuite) TestSymlink() {
+	err := suite.accountNode.Symlink("container", "hardlink")
+	assert.NotNil(suite.T(), syscall.ENOTSUP, err)
 }
 
 func TestRunSuite(t *testing.T) {
