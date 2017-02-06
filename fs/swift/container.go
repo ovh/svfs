@@ -43,7 +43,9 @@ func (c *Container) Remove(node fs.Node) error {
 	panic("not implemented")
 }
 
-func (c *Container) Rename(newName string, newDir fs.Directory) error {
+func (c *Container) Rename(node fs.Node, newName string, newDir fs.Directory,
+) (err error,
+) {
 	panic("not implemented")
 }
 

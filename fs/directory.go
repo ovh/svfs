@@ -5,6 +5,6 @@ type Directory interface {
 	Hardlink(targetPath, linkName string) error
 	Mkdir(dirName string) (Directory, error)
 	Remove(Node) error
-	Rename(newName string, newDir Directory) error
+	Rename(node Node, newName string, newDir Directory) error
 	Symlink(targetPath, linkName string) error
 }

@@ -58,7 +58,9 @@ func (a *Account) Remove(node fs.Node) (err error) {
 	return con.DeleteLogicalContainer(node.(*Container).swiftContainer)
 }
 
-func (a *Account) Rename(newName string, newDir fs.Directory) error {
+func (a *Account) Rename(node fs.Node, newName string, newDir fs.Directory,
+) (err error,
+) {
 	return syscall.ENOTSUP
 }
 
