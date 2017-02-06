@@ -25,15 +25,17 @@ func (suite *AccountTestSuite) TestCreationTime() {
 	assert.Equal(suite.T(), expected, actual)
 }
 
-func (suite *AccountTestSuite) TestTimestamp() {
+func (suite *AccountTestSuite) TestTimestampSuccess() {
 	secs, nsecs, err := suite.ts.Account.timestamp()
-	assert.Nil(suite.T(), err)
+	assert.NoError(suite.T(), err)
 	test.EqualInt64(suite.T(), 1446048898, secs)
 	test.EqualInt64(suite.T(), 882260084, nsecs)
+}
 
+func (suite *AccountTestSuite) TestTimestampFail() {
 	suite.ts.Account.Headers[TimestampHeader] = "invalid"
-	_, _, err = suite.ts.Account.timestamp()
-	assert.NotNil(suite.T(), err)
+	_, _, err := suite.ts.Account.timestamp()
+	assert.Error(suite.T(), err)
 }
 
 func TestRunAccountTestSuite(t *testing.T) {

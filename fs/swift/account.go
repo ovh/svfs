@@ -40,9 +40,7 @@ func (a *Account) Mkdir(dirName string) (fs.Directory, error) {
 	con := a.storage.Borrow().(*swift.Connection)
 	defer a.storage.Return()
 
-	container, err := swift.NewLogicalContainer(
-		con, a.Fs.conf.StoragePolicy, dirName,
-	)
+	container, err := swift.NewLogicalContainer(con, dirName)
 
 	return &Container{Fs: a.Fs, swiftContainer: container}, err
 }

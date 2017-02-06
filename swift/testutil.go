@@ -51,6 +51,7 @@ func NewMockedTestSet() *MockedTestSet {
 			AccountBytesUsedHeader:      "65536",
 			AccountContainerCountHeader: "2",
 			AccountObjectCountHeader:    "1500",
+			TimestampHeader:             "1446048898.88226",
 		},
 	}
 	connection := &Connection{
@@ -72,6 +73,7 @@ func NewMockedTestSet() *MockedTestSet {
 				StoragePolicyHeader:        "Policy1",
 				ContainerBytesUsedHeader:   "16384",
 				ContainerObjectCountHeader: "200",
+				TimestampHeader:            "1446048898.88226",
 			},
 		},
 		SegmentContainer: &Container{
@@ -84,6 +86,7 @@ func NewMockedTestSet() *MockedTestSet {
 				StoragePolicyHeader:        "Policy1",
 				ContainerBytesUsedHeader:   "32768",
 				ContainerObjectCountHeader: "500",
+				TimestampHeader:            "1446048897.88226",
 			},
 		},
 	}
@@ -110,9 +113,12 @@ func (ts *MockedTestSet) MockAccount(status StatusMap) {
 				return
 			}
 
+			resp.Header.Add(TimestampHeader, ts.Account.Headers[TimestampHeader])
+
 			addInt64Header(resp, AccountBytesUsedHeader, ts.Account.BytesUsed)
 			addInt64Header(resp, AccountContainerCountHeader, ts.Account.Containers)
 			addInt64Header(resp, AccountObjectCountHeader, ts.Account.Objects)
+
 			if ts.Account.Quota > 0 {
 				addInt64Header(resp, AccountBytesQuotaHeader, ts.Account.Quota)
 			}
@@ -158,6 +164,8 @@ func (ts *MockedTestSet) MockContainers(status StatusMap) {
 				if code < 200 || code >= 300 {
 					return
 				}
+
+				resp.Header.Add(TimestampHeader, c.Headers[TimestampHeader])
 
 				addInt64Header(resp, ContainerBytesUsedHeader, c.Bytes)
 				addInt64Header(resp, ContainerObjectCountHeader, c.Count)

@@ -1,159 +1,214 @@
 package swift
 
 import (
+	"math"
 	"testing"
+
+	httpmock "gopkg.in/jarcoal/httpmock.v1"
 
 	"github.com/ovh/svfs/fs"
 	"github.com/ovh/svfs/swift"
 	"github.com/ovh/svfs/util/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	lib "github.com/xlucas/swift"
 )
 
 type FsTestSuite struct {
 	suite.Suite
-	account   *swift.Account
-	container *swift.LogicalContainer
-	fs        *Fs
-	list      swift.ContainerList
-	stats     *fs.FsStats
+	fs    *Fs
+	stats *fs.FsStats
+	ts    *swift.MockedTestSet
 }
 
 func (suite *FsTestSuite) SetupSuite() {
-	suite.account = &swift.Account{
-		&lib.Account{
-			Containers: 2,
-			Objects:    1500,
-			BytesUsed:  65536,
-		},
-		lib.Headers{},
-	}
-	suite.container = &swift.LogicalContainer{
-		MainContainer: &swift.Container{
-			Container: &lib.Container{
-				Name:  "container",
-				Bytes: 16384,
-				Count: 200,
-			},
-			Headers: lib.Headers{swift.StoragePolicyHeader: "Policy1"},
-		},
-		SegmentContainer: &swift.Container{
-			Container: &lib.Container{
-				Name:  "container_segments",
-				Bytes: 32768,
-				Count: 500,
-			},
-			Headers: lib.Headers{swift.StoragePolicyHeader: "Policy1"},
-		},
-	}
-	suite.list = swift.ContainerList{
-		"container":          suite.container.MainContainer,
-		"container_segments": suite.container.SegmentContainer,
-	}
+	httpmock.Activate()
+}
+
+func (suite *FsTestSuite) TearDownSuite() {
+	httpmock.DeactivateAndReset()
 }
 
 func (suite *FsTestSuite) SetupTest() {
-	suite.stats = &fs.FsStats{
-		BlockSize: 4096,
-	}
-	suite.fs = new(Fs)
-	suite.fs.conf = &FsConfiguration{
-		BlockSize:     uint64(4096),
-		Container:     "container",
-		Connections:   uint32(1),
-		StoragePolicy: "Policy1",
-		OsStorageURL:  swift.MockedStorageURL,
-		OsAuthToken:   swift.MockedToken,
-	}
-	suite.fs.storage = swift.NewMockedConnectionHolder(1,
-		suite.fs.conf.StoragePolicy,
-	)
+	httpmock.Reset()
+	suite.ts = swift.NewMockedTestSet()
+	suite.fs = NewMockedFs()
 }
 
-func (suite *FsTestSuite) TestGetUsage() {
-	// File system with the container mount option
-	suite.fs.getUsage(suite.stats, suite.account, suite.container)
-	test.EqualUint64(suite.T(), 12, suite.stats.BlocksUsed)
+func (suite *FsTestSuite) TestRootAccountSuccess() {
+	suite.ts.MockAccount(swift.StatusMap{"HEAD": 200})
 
-	// File system without the container mount option
 	suite.fs.conf.Container = ""
-	suite.fs.getUsage(suite.stats, suite.account, suite.container)
-	test.EqualUint64(suite.T(), 16, suite.stats.BlocksUsed)
+	root, err := suite.fs.Root()
+
+	assert.NoError(suite.T(), err)
+	assert.IsType(suite.T(), &Account{}, root)
+
+	account := root.(*Account)
+	assert.EqualValues(suite.T(), suite.ts.Account, account.swiftAccount)
 }
 
-func (suite *FsTestSuite) TestGetFreeSpace() {
-	// File system with the container mount option
-	suite.account.Quota = 0
-	suite.fs.getUsage(suite.stats, suite.account, suite.container)
-	suite.fs.getFreeSpace(suite.stats, suite.account, suite.container)
-	test.EqualUint64(suite.T(), 4503599627370495, suite.stats.Blocks)
-	test.EqualUint64(suite.T(), 4503599627370483, suite.stats.BlocksFree)
-	test.EqualUint64(suite.T(), 18446744073709551615, suite.stats.Files)
-	test.EqualUint64(suite.T(), 18446744073709551415, suite.stats.FilesFree)
+func (suite *FsTestSuite) TestRootAccountFail() {
+	suite.ts.MockAccount(swift.StatusMap{"HEAD": 500})
 
-	suite.account.Quota = 163840
-	suite.fs.getUsage(suite.stats, suite.account, suite.container)
-	suite.fs.getFreeSpace(suite.stats, suite.account, suite.container)
-	test.EqualUint64(suite.T(), 36, suite.stats.Blocks)
-	test.EqualUint64(suite.T(), 24, suite.stats.BlocksFree)
-	test.EqualUint64(suite.T(), 18446744073709551615, suite.stats.Files)
-	test.EqualUint64(suite.T(), 18446744073709551415, suite.stats.FilesFree)
-
-	// Filesystem without the container mount option
 	suite.fs.conf.Container = ""
+	_, err := suite.fs.Root()
 
-	suite.account.Quota = 0
-	suite.fs.getUsage(suite.stats, suite.account, suite.container)
-	suite.fs.getFreeSpace(suite.stats, suite.account, suite.container)
-	test.EqualUint64(suite.T(), 4503599627370495, suite.stats.Blocks)
-	test.EqualUint64(suite.T(), 4503599627370479, suite.stats.BlocksFree)
-	test.EqualUint64(suite.T(), 18446744073709551615, suite.stats.Files)
-	test.EqualUint64(suite.T(), 18446744073709550115, suite.stats.FilesFree)
-
-	suite.account.Quota = 163840
-	suite.fs.getUsage(suite.stats, suite.account, suite.container)
-	suite.fs.getFreeSpace(suite.stats, suite.account, suite.container)
-	test.EqualUint64(suite.T(), 40, suite.stats.Blocks)
-	test.EqualUint64(suite.T(), 24, suite.stats.BlocksFree)
-	test.EqualUint64(suite.T(), 18446744073709551615, suite.stats.Files)
-	test.EqualUint64(suite.T(), 18446744073709550115, suite.stats.FilesFree)
-
+	assert.Error(suite.T(), err)
 }
 
-func (suite *FsTestSuite) TestGetFsRoot() {
-	// Logical container exist already
-	swift.MockAccount(suite.account, suite.list,
-		swift.StatusMap{
-			"GET":  200,
-			"HEAD": 200,
-		},
-	)
-	swift.MockContainers(suite.list, swift.StatusMap{"HEAD": 200})
+func (suite *FsTestSuite) TestRootExistingContainerSuccess() {
+	suite.ts.MockAccount(swift.StatusMap{"GET": 200, "HEAD": 200})
+	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
+	suite.fs.conf.Container = suite.ts.Container.Name()
 
-	for _, option := range []string{"container", ""} {
-		suite.fs.conf.Container = option
-		account, container, err := suite.fs.getFsRoot()
-		assert.Nil(suite.T(), err)
-		assert.NotNil(suite.T(), account)
-		if option != "" {
-			assert.NotNil(suite.T(), container)
-		}
-	}
+	root, err := suite.fs.Root()
+	container := root.(*Container)
 
-	// Logical container is missing the segment container
-	suite.list["container_segments"] = nil
-	suite.fs.conf.Container = "container"
-	account, container, err := suite.fs.getFsRoot()
-	assert.Nil(suite.T(), err)
-	assert.NotNil(suite.T(), account)
-	assert.NotNil(suite.T(), container)
-	assert.Equal(suite.T(), "container_segments",
-		container.SegmentContainer.Name)
+	assert.NoError(suite.T(), err)
+	assert.EqualValues(suite.T(), suite.ts.Container, container.swiftContainer)
+}
+
+func (suite *FsTestSuite) TestRootMissingSegmentContainerSuccess() {
+	suite.ts.MockAccount(swift.StatusMap{"GET": 200, "HEAD": 200})
+	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
+
+	suite.ts.ContainerList[suite.ts.Container.SegmentContainer.Name] = nil
+	suite.fs.conf.Container = suite.ts.Container.Name()
+	root, err := suite.fs.Root()
+	container := root.(*Container)
+
+	assert.NoError(suite.T(), err)
+
+	assert.EqualValues(suite.T(), suite.ts.Container, container.swiftContainer)
+	assert.Equal(suite.T(), suite.ts.Container.SegmentContainer.Name,
+		container.swiftContainer.SegmentContainer.Name)
 	assert.Equal(suite.T(),
-		container.MainContainer.Headers[swift.StoragePolicyHeader],
-		container.SegmentContainer.Headers[swift.StoragePolicyHeader],
+		suite.ts.Container.MainContainer.Headers[swift.StoragePolicyHeader],
+		container.swiftContainer.SegmentContainer.Headers[swift.StoragePolicyHeader],
 	)
+}
+
+func (suite *FsTestSuite) TestRootContainerFail() {
+	suite.ts.MockAccount(swift.StatusMap{"GET": 200, "HEAD": 200})
+	suite.ts.MockContainers(swift.StatusMap{"HEAD": 500})
+
+	suite.fs.conf.Container = suite.ts.Container.Name()
+	_, err := suite.fs.Root()
+
+	assert.Error(suite.T(), err)
+}
+
+func (suite *FsTestSuite) TestSetupFail() {
+	fs := new(Fs)
+	err := fs.Setup(suite.fs.conf)
+	assert.Error(suite.T(), err)
+}
+
+func (suite *FsTestSuite) TestStatFsAccountNoQuotaSuccess() {
+	suite.ts.MockAccount(swift.StatusMap{"HEAD": 200})
+	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
+
+	suite.fs.conf.Container = ""
+	stats, err := suite.fs.StatFs()
+
+	assert.NoError(suite.T(), err)
+	test.EqualUint64(suite.T(), math.MaxUint64, stats.Files)
+
+	bSize := suite.fs.conf.BlockSize
+	blocksUsed := uint64(suite.ts.Account.BytesUsed) / bSize
+	filesFree := math.MaxUint64 - uint64(suite.ts.Account.Objects)
+	assert.Equal(suite.T(), blocksUsed, stats.BlocksUsed)
+	assert.Equal(suite.T(), filesFree, stats.FilesFree)
+
+	blocks := math.MaxUint64 / bSize
+	bfree := blocks - blocksUsed
+	assert.Equal(suite.T(), blocks, stats.Blocks)
+	assert.Equal(suite.T(), bfree, stats.BlocksFree)
+}
+
+func (suite *FsTestSuite) TestStatFsAccountQuotaSuccess() {
+	suite.ts.Account.Quota = 163840
+	suite.ts.MockAccount(swift.StatusMap{"HEAD": 200})
+	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
+
+	suite.fs.conf.Container = ""
+	stats, err := suite.fs.StatFs()
+	bSize := suite.fs.conf.BlockSize
+
+	assert.NoError(suite.T(), err)
+	test.EqualUint64(suite.T(), math.MaxUint64, stats.Files)
+
+	blocksUsed := uint64(suite.ts.Account.BytesUsed) / bSize
+	filesFree := math.MaxUint64 - uint64(suite.ts.Account.Objects)
+	assert.Equal(suite.T(), blocksUsed, stats.BlocksUsed)
+	assert.Equal(suite.T(), filesFree, stats.FilesFree)
+
+	bfree := uint64(suite.ts.Account.Quota-suite.ts.Account.BytesUsed) / bSize
+	blocks := uint64(suite.ts.Account.Quota) / bSize
+	assert.Equal(suite.T(), bfree, stats.BlocksFree)
+	assert.Equal(suite.T(), blocks, stats.Blocks)
+
+}
+
+func (suite *FsTestSuite) TestStatFsAccountFail() {
+	suite.ts.MockAccount(swift.StatusMap{"HEAD": 500})
+	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
+
+	_, err := suite.fs.StatFs()
+
+	assert.Error(suite.T(), err)
+}
+
+func (suite *FsTestSuite) TestStatFsContainerNoQuotaSuccess() {
+	suite.ts.MockAccount(swift.StatusMap{"HEAD": 200})
+	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
+
+	stats, err := suite.fs.StatFs()
+
+	assert.NoError(suite.T(), err)
+	test.EqualUint64(suite.T(), math.MaxUint64, stats.Files)
+
+	bSize := suite.fs.conf.BlockSize
+	blocksUsed := uint64(suite.ts.Container.Bytes()) / bSize
+	filesFree := math.MaxUint64 - uint64(suite.ts.Container.MainContainer.Count)
+	assert.Equal(suite.T(), blocksUsed, stats.BlocksUsed)
+	assert.Equal(suite.T(), filesFree, stats.FilesFree)
+
+	blocks := math.MaxUint64 / bSize
+	bfree := blocks - blocksUsed
+	assert.Equal(suite.T(), blocks, stats.Blocks)
+	assert.Equal(suite.T(), bfree, stats.BlocksFree)
+}
+
+func (suite *FsTestSuite) TestStatFsContainerQuotaSuccess() {
+	suite.ts.Account.Quota = 163840
+	suite.ts.MockAccount(swift.StatusMap{"HEAD": 200})
+	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
+
+	stats, err := suite.fs.StatFs()
+	bSize := suite.fs.conf.BlockSize
+
+	assert.NoError(suite.T(), err)
+	test.EqualUint64(suite.T(), math.MaxUint64, stats.Files)
+
+	blocksUsed := uint64(suite.ts.Container.Bytes()) / bSize
+	filesFree := math.MaxUint64 - uint64(suite.ts.Container.MainContainer.Count)
+	assert.Equal(suite.T(), blocksUsed, stats.BlocksUsed)
+	assert.Equal(suite.T(), filesFree, stats.FilesFree)
+
+	bfree := uint64(suite.ts.Account.Quota-suite.ts.Account.BytesUsed) / bSize
+	blocks := bfree + blocksUsed
+	assert.Equal(suite.T(), bfree, stats.BlocksFree)
+	assert.Equal(suite.T(), blocks, stats.Blocks)
+}
+
+func (suite *FsTestSuite) TestStatFsContainerFail() {
+	suite.ts.MockAccount(swift.StatusMap{"HEAD": 200})
+	suite.ts.MockContainers(swift.StatusMap{"HEAD": 500})
+
+	_, err := suite.fs.StatFs()
+
+	assert.Error(suite.T(), err)
 }
 
 func TestRunFsSuite(t *testing.T) {

@@ -52,3 +52,7 @@ func (c *LogicalContainer) Bytes() int64 {
 func (c *LogicalContainer) CreationTime() time.Time {
 	return c.MainContainer.CreationTime()
 }
+
+func (c *LogicalContainer) Name() string {
+	return c.MainContainer.Name
+}

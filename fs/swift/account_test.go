@@ -5,120 +5,102 @@ import (
 	"syscall"
 	"testing"
 
+	httpmock "gopkg.in/jarcoal/httpmock.v1"
+
 	"github.com/ovh/svfs/swift"
 	"github.com/ovh/svfs/util/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	lib "github.com/xlucas/swift"
 )
 
 type AccountTestSuite struct {
 	suite.Suite
-	account     *swift.Account
 	accountNode *Account
-	container   *swift.LogicalContainer
 	fs          *Fs
-	list        swift.ContainerList
+	ts          *swift.MockedTestSet
 }
 
 func (suite *AccountTestSuite) SetupSuite() {
-	suite.account = &swift.Account{
-		&lib.Account{
-			Containers: 2,
-			Objects:    1500,
-			BytesUsed:  65536,
-		},
-		lib.Headers{swift.TimestampHeader: "1446048898.88226"},
-	}
-	suite.container = &swift.LogicalContainer{
-		MainContainer: &swift.Container{
-			Container: &lib.Container{
-				Name:  "container",
-				Bytes: 16384,
-				Count: 200,
-			},
-			Headers: lib.Headers{
-				swift.StoragePolicyHeader:  "Policy1",
-				"X-Container-Bytes-Used":   "16384",
-				"X-Container-Object-Count": "200",
-			},
-		},
-		SegmentContainer: &swift.Container{
-			Container: &lib.Container{
-				Name:  "container_segments",
-				Bytes: 32768,
-				Count: 500,
-			},
-			Headers: lib.Headers{
-				swift.StoragePolicyHeader:  "Policy1",
-				"X-Container-Bytes-Used":   "32768",
-				"X-Container-Object-Count": "500",
-			},
-		},
-	}
-	suite.list = swift.ContainerList{
-		"container":          suite.container.MainContainer,
-		"container_segments": suite.container.SegmentContainer,
-	}
+	httpmock.Activate()
 }
 
 func (suite *AccountTestSuite) SetupTest() {
-	suite.fs = new(Fs)
-	suite.fs.conf = &FsConfiguration{
-		BlockSize:     uint64(4096),
-		Container:     "container",
-		Connections:   uint32(1),
-		StoragePolicy: "Policy1",
-		Uid:           845,
-		Gid:           820,
-		Perms:         0700,
-		OsStorageURL:  swift.MockedStorageURL,
-		OsAuthToken:   swift.MockedToken,
-	}
-	suite.fs.storage = swift.NewMockedConnectionHolder(1,
-		suite.fs.conf.StoragePolicy,
-	)
-	suite.accountNode = &Account{Fs: suite.fs, swiftAccount: suite.account}
+	httpmock.Reset()
+	suite.ts = swift.NewMockedTestSet()
+	suite.fs = NewMockedFs()
+	suite.accountNode = &Account{suite.fs, suite.ts.Account}
+}
+
+func (suite *AccountTestSuite) TearDownSuite() {
+	httpmock.DeactivateAndReset()
 }
 
 func (suite *AccountTestSuite) TestCreate() {
 	_, err := suite.accountNode.Create("file")
-	assert.NotNil(suite.T(), syscall.ENOTSUP, err)
+	assert.Equal(suite.T(), syscall.ENOTSUP, err)
 }
 
 func (suite *AccountTestSuite) TestGetAttr() {
 	attr, err := suite.accountNode.GetAttr()
-	assert.Nil(suite.T(), err)
-	assert.Equal(suite.T(), attr.Ctime, suite.account.CreationTime())
-	assert.Equal(suite.T(), attr.Mtime, suite.account.CreationTime())
-	assert.Equal(suite.T(), attr.Mode, os.ModeDir|0700)
-	test.EqualUint32(suite.T(), attr.Uid, 845)
-	test.EqualUint32(suite.T(), attr.Gid, 820)
-	test.EqualUint64(suite.T(), attr.Size, 4096)
+	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), attr.Ctime, suite.ts.Account.CreationTime())
+	assert.Equal(suite.T(), attr.Mtime, suite.ts.Account.CreationTime())
+	assert.Equal(suite.T(), os.ModeDir|suite.fs.conf.Perms, attr.Mode)
+	test.EqualUint32(suite.T(), suite.fs.conf.Uid, attr.Uid)
+	test.EqualUint32(suite.T(), suite.fs.conf.Gid, attr.Gid)
+	test.EqualUint64(suite.T(), suite.fs.conf.BlockSize, attr.Size)
 }
 
 func (suite *AccountTestSuite) TestHardlink() {
 	err := suite.accountNode.Hardlink("container", "hardlink")
-	assert.NotNil(suite.T(), syscall.ENOTSUP, err)
+	assert.Equal(suite.T(), syscall.ENOTSUP, err)
 }
 
-func (suite *AccountTestSuite) TestMkdir() {
-	swift.MockAccount(nil, suite.list, swift.StatusMap{"PUT": 200})
-	swift.MockContainers(suite.list, swift.StatusMap{"HEAD": 200})
+func (suite *AccountTestSuite) TestMkdirSucces() {
+	suite.ts.MockAccount(swift.StatusMap{"PUT": 200})
+	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
 
 	dir, err := suite.accountNode.Mkdir("container")
-	assert.Nil(suite.T(), err)
-	assert.IsType(suite.T(), &Container{}, dir)
 	container := dir.(*Container)
-	assert.EqualValues(suite.T(), suite.container, container.swiftContainer)
+
+	assert.NoError(suite.T(), err)
+	assert.EqualValues(suite.T(), suite.ts.Container, container.swiftContainer)
 }
 
-func (suite *AccountTestSuite) TestRemove() {
-	swift.MockContainers(suite.list, swift.StatusMap{"DELETE": 200})
+func (suite *AccountTestSuite) TestMkdirFail() {
+	suite.ts.MockAccount(swift.StatusMap{"PUT": 500})
+	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
 
-	containerNode := &Container{Fs: suite.fs, swiftContainer: suite.container}
+	_, err := suite.accountNode.Mkdir("container")
+
+	assert.Error(suite.T(), err)
+}
+
+func (suite *AccountTestSuite) TestRemoveSuccess() {
+	suite.ts.MockContainers(swift.StatusMap{"DELETE": 200})
+	containerNode := &Container{Fs: suite.fs, swiftContainer: suite.ts.Container}
+
 	err := suite.accountNode.Remove(containerNode)
-	assert.Nil(suite.T(), err)
+
+	assert.NoError(suite.T(), err)
+}
+
+func (suite *AccountTestSuite) TestRemoveFailOnContainer() {
+	suite.ts.MockContainers(swift.StatusMap{"DELETE": 500})
+	containerNode := &Container{Fs: suite.fs, swiftContainer: suite.ts.Container}
+
+	err := suite.accountNode.Remove(containerNode)
+
+	assert.Error(suite.T(), err)
+}
+
+func (suite *AccountTestSuite) TestRemoveFailOnNode() {
+	suite.ts.MockContainers(swift.StatusMap{"DELETE": 500})
+	accountNode := &Account{Fs: suite.fs, swiftAccount: suite.ts.Account}
+
+	err := suite.accountNode.Remove(accountNode)
+
+	assert.Error(suite.T(), err)
 }
 
 func (suite *AccountTestSuite) TestRename() {
@@ -128,9 +110,9 @@ func (suite *AccountTestSuite) TestRename() {
 
 func (suite *AccountTestSuite) TestSymlink() {
 	err := suite.accountNode.Symlink("container", "hardlink")
-	assert.NotNil(suite.T(), syscall.ENOTSUP, err)
+	assert.Equal(suite.T(), syscall.ENOTSUP, err)
 }
 
-func TestRunSuite(t *testing.T) {
+func TestRunAccountSuite(t *testing.T) {
 	suite.Run(t, new(AccountTestSuite))
 }

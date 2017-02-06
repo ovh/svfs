@@ -130,7 +130,7 @@ func (sfs *Fs) getQuotaFreeSpace(stats *fs.FsStats, account *swift.Account,
 	if sfs.conf.Container != "" {
 		// Device block count is the sum of quota free blocks plus container
 		// used blocks.
-		stats.Blocks = quotaFreeSpace/stats.BlockSize + stats.BlocksUsed
+		stats.Blocks = stats.BlocksFree + stats.BlocksUsed
 	} else {
 		// Device block count equals quota block count.
 		stats.Blocks = uint64(account.Quota) / stats.BlockSize
