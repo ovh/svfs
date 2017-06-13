@@ -24,13 +24,22 @@ getting request token, getting access token and finally getting your refresh tok
 Go to https://hubic.com/home/browser/developers/ and add an application. Application
 name must be unique across hubiC, you can run the `hubic-application` command to have
 a unique application name suggested.
+You can simply put http://localhost/ as Redirection Domain.
 
 ## Register this application for SVFS
 
 Note application client ID and client Secret and run the `hubic-application` command.
-You will be prompted these informations as well as your email and password, then
+You will be prompted these informations as well as your email and password.
+Do not forget to URL-encode your redirection domain, when asked for the redirection URI 
+(e.g. `http%3A%2F%2Flocalhost%2F` for http://localhost/ ).
+
+If you want to learn more, do not hesitate to play with the hubiC API sandbox: https://api.hubic.com/sandbox/.
+
+At the end, the minimum required mount options will be shown at the end of the application registration
 minimum required mount options will be shown at the end of the application registration
 process.
+
+
 
 ## Access your hubiC data
 
