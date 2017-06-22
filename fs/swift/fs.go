@@ -28,8 +28,8 @@ type FsConfiguration struct {
 	OsUserName        string
 	OsPassword        string
 	OsStorageURL      string
-	OsTenantName      string
 	OsRegionName      string
+	OsTenantName      string
 	HubicAuthToken    string
 	HubicRefreshToken string
 }
@@ -49,6 +49,7 @@ func (sfs *Fs) Setup(c ctx.Context, conf interface{}) (err error) {
 		ApiKey:     sfs.conf.OsPassword,
 		UserName:   sfs.conf.OsUserName,
 		Tenant:     sfs.conf.OsTenantName,
+		Region:     sfs.conf.OsRegionName,
 		StorageUrl: sfs.conf.OsStorageURL,
 		AuthToken:  sfs.conf.OsAuthToken,
 	}
