@@ -17,10 +17,8 @@ func (svfs *SVFS) Root() (fs.Node, error) {
 	return &Directory{dir}, err
 }
 
-func (svfs *SVFS) Statfs(ctx context.Context, req *fuse.StatfsRequest,
-	resp *fuse.StatfsResponse) (err error,
-) {
-	stats, err := svfs.Fs.StatFs()
+func (svfs *SVFS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.StatfsResponse) (err error) {
+	stats, err := svfs.Fs.StatFs(ctx)
 
 	resp.Bavail = stats.BlocksFree
 	resp.Bfree = stats.BlocksFree

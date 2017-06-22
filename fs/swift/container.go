@@ -6,6 +6,8 @@ import (
 
 	"github.com/ovh/svfs/fs"
 	"github.com/ovh/svfs/swift"
+
+	ctx "golang.org/x/net/context"
 )
 
 type Container struct {
@@ -13,42 +15,40 @@ type Container struct {
 	swiftContainer *swift.LogicalContainer
 }
 
-func (c *Container) Create(nodeName string) (fs.File, error) {
+func (co *Container) Create(c ctx.Context, nodeName string) (fs.File, error) {
 	panic("not implemented")
 }
 
-func (c *Container) GetAttr() (attr *fs.Attr, err error) {
+func (co *Container) GetAttr(c ctx.Context) (attr *fs.Attr, err error) {
 	attr = &fs.Attr{
 		Atime: time.Now(),
-		Ctime: c.swiftContainer.CreationTime(),
-		Mtime: c.swiftContainer.CreationTime(),
-		Uid:   c.Fs.conf.Uid,
-		Gid:   c.Fs.conf.Gid,
-		Mode:  os.ModeDir | c.Fs.conf.Perms,
-		Size:  c.Fs.conf.BlockSize,
+		Ctime: co.swiftContainer.CreationTime(),
+		Mtime: co.swiftContainer.CreationTime(),
+		Uid:   co.Fs.conf.Uid,
+		Gid:   co.Fs.conf.Gid,
+		Mode:  os.ModeDir | co.Fs.conf.Perms,
+		Size:  co.Fs.conf.BlockSize,
 	}
 
 	return
 }
 
-func (c *Container) Hardlink(targetPath string, linkName string) error {
+func (co *Container) Hardlink(c ctx.Context, targetPath string, linkName string) error {
 	panic("not implemented")
 }
 
-func (c *Container) Mkdir(dirName string) (fs.Directory, error) {
+func (co *Container) Mkdir(c ctx.Context, dirName string) (fs.Directory, error) {
 	panic("not implemented")
 }
 
-func (c *Container) Remove(node fs.Node) error {
+func (co *Container) Remove(c ctx.Context, node fs.Node) error {
 	panic("not implemented")
 }
 
-func (c *Container) Rename(node fs.Node, newName string, newDir fs.Directory,
-) (err error,
-) {
+func (co *Container) Rename(c ctx.Context, node fs.Node, newName string, newDir fs.Directory) (err error) {
 	panic("not implemented")
 }
 
-func (c *Container) Symlink(targetPath string, linkName string) error {
+func (co *Container) Symlink(c ctx.Context, targetPath string, linkName string) error {
 	panic("not implemented")
 }

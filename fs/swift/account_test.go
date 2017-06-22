@@ -11,6 +11,7 @@ import (
 	"github.com/ovh/svfs/util/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/net/context"
 )
 
 type AccountTestSuite struct {
@@ -18,6 +19,7 @@ type AccountTestSuite struct {
 	accountNode *Account
 	fs          *Fs
 	ts          *swift.MockedTestSet
+	c           context.Context
 }
 
 func (suite *AccountTestSuite) SetupSuite() {
@@ -26,6 +28,7 @@ func (suite *AccountTestSuite) SetupSuite() {
 
 func (suite *AccountTestSuite) SetupTest() {
 	httpmock.Reset()
+	suite.c = context.Background()
 	suite.ts = swift.NewMockedTestSet()
 	suite.fs = NewMockedFs()
 	suite.accountNode = &Account{suite.fs, suite.ts.Account}
@@ -36,12 +39,12 @@ func (suite *AccountTestSuite) TearDownSuite() {
 }
 
 func (suite *AccountTestSuite) TestCreate() {
-	_, err := suite.accountNode.Create("file")
+	_, err := suite.accountNode.Create(suite.c, "file")
 	assert.Equal(suite.T(), syscall.ENOTSUP, err)
 }
 
 func (suite *AccountTestSuite) TestGetAttr() {
-	attr, err := suite.accountNode.GetAttr()
+	attr, err := suite.accountNode.GetAttr(suite.c)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), attr.Ctime, suite.ts.Account.CreationTime())
 	assert.Equal(suite.T(), attr.Mtime, suite.ts.Account.CreationTime())
@@ -52,7 +55,7 @@ func (suite *AccountTestSuite) TestGetAttr() {
 }
 
 func (suite *AccountTestSuite) TestHardlink() {
-	err := suite.accountNode.Hardlink("container", "hardlink")
+	err := suite.accountNode.Hardlink(suite.c, "container", "hardlink")
 	assert.Equal(suite.T(), syscall.ENOTSUP, err)
 }
 
@@ -60,7 +63,7 @@ func (suite *AccountTestSuite) TestMkdirSucces() {
 	suite.ts.MockAccount(swift.StatusMap{"PUT": 200})
 	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
 
-	dir, err := suite.accountNode.Mkdir("container")
+	dir, err := suite.accountNode.Mkdir(suite.c, "container")
 	container := dir.(*Container)
 
 	assert.NoError(suite.T(), err)
@@ -71,7 +74,7 @@ func (suite *AccountTestSuite) TestMkdirFail() {
 	suite.ts.MockAccount(swift.StatusMap{"PUT": 500})
 	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
 
-	_, err := suite.accountNode.Mkdir("container")
+	_, err := suite.accountNode.Mkdir(suite.c, "container")
 
 	assert.Error(suite.T(), err)
 }
@@ -80,7 +83,7 @@ func (suite *AccountTestSuite) TestRemoveSuccess() {
 	suite.ts.MockContainers(swift.StatusMap{"DELETE": 200})
 	containerNode := &Container{Fs: suite.fs, swiftContainer: suite.ts.Container}
 
-	err := suite.accountNode.Remove(containerNode)
+	err := suite.accountNode.Remove(suite.c, containerNode)
 
 	assert.NoError(suite.T(), err)
 }
@@ -89,7 +92,7 @@ func (suite *AccountTestSuite) TestRemoveFailOnContainer() {
 	suite.ts.MockContainers(swift.StatusMap{"DELETE": 500})
 	containerNode := &Container{Fs: suite.fs, swiftContainer: suite.ts.Container}
 
-	err := suite.accountNode.Remove(containerNode)
+	err := suite.accountNode.Remove(suite.c, containerNode)
 
 	assert.Error(suite.T(), err)
 }
@@ -98,18 +101,18 @@ func (suite *AccountTestSuite) TestRemoveFailOnNode() {
 	suite.ts.MockContainers(swift.StatusMap{"DELETE": 500})
 	accountNode := &Account{Fs: suite.fs, swiftAccount: suite.ts.Account}
 
-	err := suite.accountNode.Remove(accountNode)
+	err := suite.accountNode.Remove(suite.c, accountNode)
 
 	assert.Error(suite.T(), err)
 }
 
 func (suite *AccountTestSuite) TestRename() {
-	err := suite.accountNode.Rename(nil, "newName", suite.accountNode)
+	err := suite.accountNode.Rename(suite.c, nil, "newName", suite.accountNode)
 	assert.Equal(suite.T(), syscall.ENOTSUP, err)
 }
 
 func (suite *AccountTestSuite) TestSymlink() {
-	err := suite.accountNode.Symlink("container", "hardlink")
+	err := suite.accountNode.Symlink(suite.c, "container", "hardlink")
 	assert.Equal(suite.T(), syscall.ENOTSUP, err)
 }
 

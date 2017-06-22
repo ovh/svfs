@@ -8,6 +8,8 @@ import (
 	"github.com/ovh/svfs/fs"
 	"github.com/ovh/svfs/swift"
 	lib "github.com/xlucas/swift"
+
+	ctx "golang.org/x/net/context"
 )
 
 type FsConfiguration struct {
@@ -38,7 +40,7 @@ type Fs struct {
 	storage   *swift.ResourceHolder
 }
 
-func (sfs *Fs) Setup(conf interface{}) (err error) {
+func (sfs *Fs) Setup(c ctx.Context, conf interface{}) (err error) {
 	sfs.mountTime = time.Now()
 	sfs.conf = conf.(*FsConfiguration)
 
@@ -51,7 +53,8 @@ func (sfs *Fs) Setup(conf interface{}) (err error) {
 		AuthToken:  sfs.conf.OsAuthToken,
 	}
 
-	sfs.storage = swift.NewResourceHolder(sfs.conf.Connections,
+	sfs.storage = swift.NewResourceHolder(
+		sfs.conf.Connections,
 		&swift.Connection{con, sfs.conf.StoragePolicy},
 	)
 
@@ -73,7 +76,7 @@ func (sfs *Fs) Root() (dir fs.Directory, err error) {
 	return
 }
 
-func (sfs *Fs) StatFs() (stats *fs.FsStats, err error) {
+func (sfs *Fs) StatFs(c ctx.Context) (stats *fs.FsStats, err error) {
 	stats = &fs.FsStats{
 		BlockSize: sfs.conf.BlockSize,
 	}
@@ -89,9 +92,7 @@ func (sfs *Fs) StatFs() (stats *fs.FsStats, err error) {
 	return
 }
 
-func (sfs *Fs) getFsRoot() (account *swift.Account,
-	container *swift.LogicalContainer, err error,
-) {
+func (sfs *Fs) getFsRoot() (account *swift.Account, container *swift.LogicalContainer, err error) {
 	con := sfs.storage.Borrow().(*swift.Connection)
 	defer sfs.storage.Return()
 
@@ -106,9 +107,7 @@ func (sfs *Fs) getFsRoot() (account *swift.Account,
 	return
 }
 
-func (sfs *Fs) getFreeSpace(stats *fs.FsStats, account *swift.Account,
-	container *swift.LogicalContainer,
-) {
+func (sfs *Fs) getFreeSpace(stats *fs.FsStats, account *swift.Account, container *swift.LogicalContainer) {
 	// Device has "unlimited" inodes.
 	stats.Files = math.MaxUint64
 
@@ -121,9 +120,7 @@ func (sfs *Fs) getFreeSpace(stats *fs.FsStats, account *swift.Account,
 	}
 }
 
-func (sfs *Fs) getQuotaFreeSpace(stats *fs.FsStats, account *swift.Account,
-	container *swift.LogicalContainer,
-) {
+func (sfs *Fs) getQuotaFreeSpace(stats *fs.FsStats, account *swift.Account, container *swift.LogicalContainer) {
 	quotaFreeSpace := uint64(account.Quota - account.BytesUsed)
 	stats.BlocksFree = quotaFreeSpace / stats.BlockSize
 
@@ -138,9 +135,7 @@ func (sfs *Fs) getQuotaFreeSpace(stats *fs.FsStats, account *swift.Account,
 
 }
 
-func (sfs *Fs) getUsage(stats *fs.FsStats, account *swift.Account,
-	container *swift.LogicalContainer,
-) {
+func (sfs *Fs) getUsage(stats *fs.FsStats, account *swift.Account, container *swift.LogicalContainer) {
 	if sfs.conf.Container != "" {
 		sfs.getContainerUsage(stats, container)
 	} else {
@@ -153,9 +148,7 @@ func (sfs *Fs) getAccountUsage(stats *fs.FsStats, account *swift.Account) {
 	stats.FilesFree = math.MaxUint64 - uint64(account.Objects)
 }
 
-func (sfs *Fs) getContainerUsage(stats *fs.FsStats,
-	container *swift.LogicalContainer,
-) {
+func (sfs *Fs) getContainerUsage(stats *fs.FsStats, container *swift.LogicalContainer) {
 	stats.BlocksUsed = uint64(container.Bytes()) / stats.BlockSize
 	stats.FilesFree = math.MaxUint64 - uint64(container.MainContainer.Count)
 }

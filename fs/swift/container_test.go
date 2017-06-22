@@ -10,6 +10,7 @@ import (
 	"github.com/ovh/svfs/util/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	ctx "golang.org/x/net/context"
 )
 
 type ContainerTestSuite struct {
@@ -17,6 +18,7 @@ type ContainerTestSuite struct {
 	containerNode *Container
 	fs            *Fs
 	ts            *swift.MockedTestSet
+	c             ctx.Context
 }
 
 func (suite *ContainerTestSuite) SetupSuite() {
@@ -27,6 +29,7 @@ func (suite *ContainerTestSuite) SetupTest() {
 	httpmock.Reset()
 	suite.ts = swift.NewMockedTestSet()
 	suite.fs = NewMockedFs()
+	suite.c = ctx.Background()
 	suite.containerNode = &Container{suite.fs, suite.ts.Container}
 }
 
@@ -35,7 +38,7 @@ func (suite *ContainerTestSuite) TearDownSuite() {
 }
 
 func (suite *ContainerTestSuite) TestGetAttr() {
-	attr, err := suite.containerNode.GetAttr()
+	attr, err := suite.containerNode.GetAttr(suite.c)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), attr.Ctime, suite.ts.Account.CreationTime())
 	assert.Equal(suite.T(), attr.Mtime, suite.ts.Account.CreationTime())

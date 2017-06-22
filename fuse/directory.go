@@ -17,7 +17,7 @@ func (d *Directory) Lookup(ctx context.Context, name string) (fs.Node, error) {
 }
 
 func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
-	attr, err := d.Directory.(sfs.Node).GetAttr()
+	attr, err := d.Directory.(sfs.Node).GetAttr(ctx)
 	a.Atime = attr.Atime
 	a.Ctime = attr.Ctime
 	a.Crtime = attr.Ctime
@@ -30,10 +30,8 @@ func (d *Directory) Attr(ctx context.Context, a *fuse.Attr) error {
 	return err
 }
 
-func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (
-	fs.Node, error,
-) {
-	dir, err := d.Directory.Mkdir(req.Name)
+func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error) {
+	dir, err := d.Directory.Mkdir(ctx, req.Name)
 	return &Directory{dir}, err
 }
 

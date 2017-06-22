@@ -1,5 +1,9 @@
 package fs
 
+import (
+	ctx "golang.org/x/net/context"
+)
+
 type FsStats struct {
 	Files      uint64
 	FilesFree  uint64
@@ -10,7 +14,7 @@ type FsStats struct {
 }
 
 type Fs interface {
-	Setup(conf interface{}) error
-	StatFs() (*FsStats, error)
+	Setup(c ctx.Context, conf interface{}) error
+	StatFs(c ctx.Context) (*FsStats, error)
 	Root() (Directory, error)
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ovh/svfs/fs"
 	"github.com/ovh/svfs/swift"
+	ctx "golang.org/x/net/context"
 )
 
 type Account struct {
@@ -14,11 +15,11 @@ type Account struct {
 	swiftAccount *swift.Account
 }
 
-func (a *Account) Create(nodeName string) (file fs.File, err error) {
+func (a *Account) Create(c ctx.Context, nodeName string) (file fs.File, err error) {
 	return nil, syscall.ENOTSUP
 }
 
-func (a *Account) GetAttr() (attr *fs.Attr, err error) {
+func (a *Account) GetAttr(ctx.Context) (attr *fs.Attr, err error) {
 	attr = &fs.Attr{
 		Atime: time.Now(),
 		Ctime: a.swiftAccount.CreationTime(),
@@ -32,11 +33,11 @@ func (a *Account) GetAttr() (attr *fs.Attr, err error) {
 	return
 }
 
-func (a *Account) Hardlink(targetPath string, linkName string) error {
+func (a *Account) Hardlink(c ctx.Context, targetPath string, linkName string) error {
 	return syscall.ENOTSUP
 }
 
-func (a *Account) Mkdir(dirName string) (fs.Directory, error) {
+func (a *Account) Mkdir(c ctx.Context, dirName string) (fs.Directory, error) {
 	con := a.storage.Borrow().(*swift.Connection)
 	defer a.storage.Return()
 
@@ -45,7 +46,7 @@ func (a *Account) Mkdir(dirName string) (fs.Directory, error) {
 	return &Container{Fs: a.Fs, swiftContainer: container}, err
 }
 
-func (a *Account) Remove(node fs.Node) (err error) {
+func (a *Account) Remove(c ctx.Context, node fs.Node) (err error) {
 	if _, ok := node.(*Container); !ok {
 		return syscall.ENOTSUP
 	}
@@ -56,12 +57,10 @@ func (a *Account) Remove(node fs.Node) (err error) {
 	return con.DeleteLogicalContainer(node.(*Container).swiftContainer)
 }
 
-func (a *Account) Rename(node fs.Node, newName string, newDir fs.Directory,
-) (err error,
-) {
+func (a *Account) Rename(c ctx.Context, node fs.Node, newName string, newDir fs.Directory) (err error) {
 	return syscall.ENOTSUP
 }
 
-func (a *Account) Symlink(targetPath string, linkName string) error {
+func (a *Account) Symlink(c ctx.Context, targetPath string, linkName string) error {
 	return syscall.ENOTSUP
 }

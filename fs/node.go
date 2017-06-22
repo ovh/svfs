@@ -3,6 +3,8 @@ package fs
 import (
 	"os"
 	"time"
+
+	ctx "golang.org/x/net/context"
 )
 
 type Attr struct {
@@ -21,10 +23,10 @@ type XAttr struct {
 }
 
 type Node interface {
-	GetAttr() (*Attr, error)
-	GetXAttr(attrName string) (*XAttr, error)
-	ListXAttr() ([]*XAttr, error)
-	RemoveXAttr(attrName string) error
-	SetAttr(*Attr) error
-	SetXAttr(*XAttr) error
+	GetAttr(c ctx.Context) (*Attr, error)
+	GetXAttr(c ctx.Context, attrName string) (*XAttr, error)
+	ListXAttr(c ctx.Context) ([]*XAttr, error)
+	RemoveXAttr(c ctx.Context, attrName string) error
+	SetAttr(c ctx.Context, attr *Attr) error
+	SetXAttr(c ctx.Context, xattr *XAttr) error
 }

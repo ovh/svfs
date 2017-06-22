@@ -19,9 +19,7 @@ type LogicalContainer struct {
 	SegmentContainer *Container
 }
 
-func NewLogicalContainer(con *Connection, mainContainerName string) (
-	container *LogicalContainer, err error,
-) {
+func NewLogicalContainer(con *Connection, mainContainerName string) (container *LogicalContainer, err error) {
 	segmentContainerName := mainContainerName + SegmentContainerSuffix
 	containers := []string{mainContainerName, segmentContainerName}
 

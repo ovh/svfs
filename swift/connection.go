@@ -51,9 +51,7 @@ func (con *Connection) getContainers() (list ContainerList, err error) {
 	return
 }
 
-func (con *Connection) getContainersByNames(names []string) (
-	list ContainerList, err error,
-) {
+func (con *Connection) getContainersByNames(names []string) (list ContainerList, err error) {
 	list = make(ContainerList)
 
 	for _, name := range names {
@@ -78,9 +76,7 @@ func (con *Connection) getContainersByNames(names []string) (
 	return
 }
 
-func (con *Connection) DeleteLogicalContainer(container *LogicalContainer,
-) (err error,
-) {
+func (con *Connection) DeleteLogicalContainer(container *LogicalContainer) (err error) {
 	for _, name := range []string{
 		container.MainContainer.Name,
 		container.SegmentContainer.Name,
@@ -99,9 +95,7 @@ func (con *Connection) Account() (account *Account, err error) {
 	return
 }
 
-func (con *Connection) LogicalContainer(name string) (
-	container *LogicalContainer, err error,
-) {
+func (con *Connection) LogicalContainer(name string) (container *LogicalContainer, err error) {
 	segmentContainer := name + SegmentContainerSuffix
 	names := []string{name, segmentContainer}
 

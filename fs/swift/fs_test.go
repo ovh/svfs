@@ -11,6 +11,8 @@ import (
 	"github.com/ovh/svfs/util/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	ctx "golang.org/x/net/context"
 )
 
 type FsTestSuite struct {
@@ -18,6 +20,7 @@ type FsTestSuite struct {
 	fs    *Fs
 	stats *fs.FsStats
 	ts    *swift.MockedTestSet
+	c     ctx.Context
 }
 
 func (suite *FsTestSuite) SetupSuite() {
@@ -100,7 +103,7 @@ func (suite *FsTestSuite) TestRootContainerFail() {
 
 func (suite *FsTestSuite) TestSetupFail() {
 	fs := new(Fs)
-	err := fs.Setup(suite.fs.conf)
+	err := fs.Setup(suite.c, suite.fs.conf)
 	assert.Error(suite.T(), err)
 }
 
@@ -109,7 +112,7 @@ func (suite *FsTestSuite) TestStatFsAccountNoQuotaSuccess() {
 	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
 
 	suite.fs.conf.Container = ""
-	stats, err := suite.fs.StatFs()
+	stats, err := suite.fs.StatFs(suite.c)
 
 	assert.NoError(suite.T(), err)
 	test.EqualUint64(suite.T(), math.MaxUint64, stats.Files)
@@ -132,7 +135,7 @@ func (suite *FsTestSuite) TestStatFsAccountQuotaSuccess() {
 	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
 
 	suite.fs.conf.Container = ""
-	stats, err := suite.fs.StatFs()
+	stats, err := suite.fs.StatFs(suite.c)
 	bSize := suite.fs.conf.BlockSize
 
 	assert.NoError(suite.T(), err)
@@ -154,7 +157,7 @@ func (suite *FsTestSuite) TestStatFsAccountFail() {
 	suite.ts.MockAccount(swift.StatusMap{"HEAD": 500})
 	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
 
-	_, err := suite.fs.StatFs()
+	_, err := suite.fs.StatFs(suite.c)
 
 	assert.Error(suite.T(), err)
 }
@@ -163,7 +166,7 @@ func (suite *FsTestSuite) TestStatFsContainerNoQuotaSuccess() {
 	suite.ts.MockAccount(swift.StatusMap{"HEAD": 200})
 	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
 
-	stats, err := suite.fs.StatFs()
+	stats, err := suite.fs.StatFs(suite.c)
 
 	assert.NoError(suite.T(), err)
 	test.EqualUint64(suite.T(), math.MaxUint64, stats.Files)
@@ -185,7 +188,7 @@ func (suite *FsTestSuite) TestStatFsContainerQuotaSuccess() {
 	suite.ts.MockAccount(swift.StatusMap{"HEAD": 200})
 	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
 
-	stats, err := suite.fs.StatFs()
+	stats, err := suite.fs.StatFs(suite.c)
 	bSize := suite.fs.conf.BlockSize
 
 	assert.NoError(suite.T(), err)
@@ -206,7 +209,7 @@ func (suite *FsTestSuite) TestStatFsContainerFail() {
 	suite.ts.MockAccount(swift.StatusMap{"HEAD": 200})
 	suite.ts.MockContainers(swift.StatusMap{"HEAD": 500})
 
-	_, err := suite.fs.StatFs()
+	_, err := suite.fs.StatFs(suite.c)
 
 	assert.Error(suite.T(), err)
 }

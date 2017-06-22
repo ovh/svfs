@@ -27,9 +27,7 @@ func addInt64Header(resp *http.Response, name string, value int64) {
 	resp.Header.Add(name, fmt.Sprintf("%d", value))
 }
 
-func NewMockedConnectionHolder(capacity uint32, storagePolicy string) (
-	mockedConnectionHolder *ResourceHolder,
-) {
+func NewMockedConnectionHolder(capacity uint32, storagePolicy string) (mockedConnectionHolder *ResourceHolder) {
 	return NewResourceHolder(capacity, &Connection{
 		Connection: &lib.Connection{
 			AuthToken:  MockedToken,
