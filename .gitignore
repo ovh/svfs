@@ -1,4 +1,6 @@
 .git/
 releases/
+dist/
+gopath/
 *.orig
 *.swp
