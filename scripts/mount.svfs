@@ -44,6 +44,7 @@ OPTIONS = {
     'segment_size'      => '--os-segment-size',
     'storage_policy'    => '--os-storage-policy',
     'storage_url'       => '--os-storage-url',
+    'internal_endpoint' => '--os-internal-endpoint',
     'tenant'            => '--os-tenant-name',
     'token'             => '--os-auth-token',
     'transfer_mode'     => '--transfer-mode',

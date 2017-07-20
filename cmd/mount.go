@@ -161,6 +161,7 @@ func setFlags() {
 	flags.StringVar(&svfs.SwiftConnection.ApiKey, "os-password", "", "User password")
 	flags.StringVar(&svfs.SwiftConnection.Region, "os-region-name", "", "Region name")
 	flags.StringVar(&svfs.SwiftConnection.StorageUrl, "os-storage-url", "", "Storage URL")
+	flags.BoolVar(&svfs.SwiftConnection.Internal, "os-internal-endpoint", false, "Use internal storage URL")
 	flags.StringVar(&svfs.SwiftConnection.Tenant, "os-tenant-name", "", "Tenant name")
 	flags.IntVar(&svfs.SwiftConnection.AuthVersion, "os-auth-version", 0, "Authentification version, 0 = auto")
 	flags.DurationVar(&svfs.SwiftConnection.ConnectTimeout, "os-connect-timeout", 15*time.Second, "Swift connection timeout")

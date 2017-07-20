@@ -90,6 +90,7 @@ hubic_token: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX...
 * `region`: the region where your tenant is.
 * `version`: authentication version (`0` means auto-discovery which is the default).
 * `storage_url`: the storage endpoint holding your data.
+* `internal_endpoint`: the storage endpoint type (default is `false`).
 * `token`: a valid token.
 
 Options `region`, `version`, `storage_url` and `token` are guessed during authentication if
