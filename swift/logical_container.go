@@ -1,9 +1,14 @@
 package swift
 
 import (
+	"errors"
 	"time"
 
 	lib "github.com/xlucas/swift"
+)
+
+var (
+	StoragePolicyUnmatch = errors.New("Wrong containers storage policy")
 )
 
 const (

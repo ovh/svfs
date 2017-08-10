@@ -46,6 +46,26 @@ func (a *Account) Mkdir(c ctx.Context, dirName string) (fs.Directory, error) {
 	return &Container{Fs: a.Fs, swiftContainer: container}, err
 }
 
+func (a *Account) Name(c ctx.Context) string {
+	return ""
+}
+
+func (a *Account) ReadDir(c ctx.Context) (nodes []fs.Node, err error) {
+	con := a.storage.Borrow().(*swift.Connection)
+	defer a.storage.Return()
+
+	containers, err := con.LogicalContainersAll()
+	if err != nil {
+		return
+	}
+
+	for _, container := range containers {
+		nodes = append(nodes, &Container{Fs: a.Fs, swiftContainer: container})
+	}
+
+	return
+}
+
 func (a *Account) Remove(c ctx.Context, node fs.Node) (err error) {
 	if _, ok := node.(*Container); !ok {
 		return syscall.ENOTSUP

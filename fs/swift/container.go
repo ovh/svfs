@@ -41,6 +41,14 @@ func (co *Container) Mkdir(c ctx.Context, dirName string) (fs.Directory, error) 
 	panic("not implemented")
 }
 
+func (co *Container) Name(c ctx.Context) string {
+	return co.swiftContainer.Name()
+}
+
+func (co *Container) ReadDir(c ctx.Context) ([]fs.Node, error) {
+	panic("not implemented")
+}
+
 func (co *Container) Remove(c ctx.Context, node fs.Node) error {
 	panic("not implemented")
 }

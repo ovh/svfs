@@ -55,15 +55,15 @@ func (suite *AccountTestSuite) TestGetAttr() {
 }
 
 func (suite *AccountTestSuite) TestHardlink() {
-	err := suite.accountNode.Hardlink(suite.c, "container", "hardlink")
+	err := suite.accountNode.Hardlink(suite.c, "container_1", "hardlink")
 	assert.Equal(suite.T(), syscall.ENOTSUP, err)
 }
 
-func (suite *AccountTestSuite) TestMkdirSucces() {
+func (suite *AccountTestSuite) TestMkdirSuccess() {
 	suite.ts.MockAccount(swift.StatusMap{"PUT": 200})
 	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
 
-	dir, err := suite.accountNode.Mkdir(suite.c, "container")
+	dir, err := suite.accountNode.Mkdir(suite.c, "container_1")
 	container := dir.(*Container)
 
 	assert.NoError(suite.T(), err)
@@ -74,7 +74,7 @@ func (suite *AccountTestSuite) TestMkdirFail() {
 	suite.ts.MockAccount(swift.StatusMap{"PUT": 500})
 	suite.ts.MockContainers(swift.StatusMap{"HEAD": 200})
 
-	_, err := suite.accountNode.Mkdir(suite.c, "container")
+	_, err := suite.accountNode.Mkdir(suite.c, "container_1")
 
 	assert.Error(suite.T(), err)
 }
@@ -112,7 +112,7 @@ func (suite *AccountTestSuite) TestRename() {
 }
 
 func (suite *AccountTestSuite) TestSymlink() {
-	err := suite.accountNode.Symlink(suite.c, "container", "hardlink")
+	err := suite.accountNode.Symlink(suite.c, "container_1", "hardlink")
 	assert.Equal(suite.T(), syscall.ENOTSUP, err)
 }
 

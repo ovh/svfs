@@ -6,7 +6,7 @@ func NewMockedFs() *Fs {
 	fs := new(Fs)
 	fs.conf = &FsConfiguration{
 		BlockSize:     uint64(4096),
-		Container:     "container",
+		Container:     "container_1",
 		Connections:   uint32(1),
 		StoragePolicy: "Policy1",
 		Uid:           845,

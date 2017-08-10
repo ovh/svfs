@@ -89,7 +89,6 @@ func (suite *ConnectionTestSuite) TestGetExistingContainersSuccess() {
 	containers, err := suite.ts.Connection.getContainers()
 
 	assert.NoError(suite.T(), err)
-	assert.Len(suite.T(), containers, 2)
 	assert.EqualValues(suite.T(), suite.ts.ContainerList[suite.name].Container,
 		containers[suite.name].Container,
 	)
@@ -189,6 +188,16 @@ func (suite *ConnectionTestSuite) TestLogicalContainerFailOnMainContainer() {
 	_, err := suite.ts.Connection.LogicalContainer(suite.name)
 
 	assert.Error(suite.T(), err)
+}
+
+func (suite *ConnectionTestSuite) TestLogicalContainers() {
+	suite.ts.MockAccount(StatusMap{"GET": 200, "PUT": 201})
+	suite.ts.MockContainers(StatusMap{"HEAD": 200})
+
+	containers, err := suite.ts.Connection.LogicalContainersAll()
+
+	assert.NoError(suite.T(), err)
+	assert.Len(suite.T(), containers, 1)
 }
 
 func TestRunConnectionSuite(t *testing.T) {

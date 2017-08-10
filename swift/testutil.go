@@ -1,6 +1,7 @@
 package swift
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -60,10 +61,10 @@ func NewMockedTestSet() *MockedTestSet {
 		},
 		StoragePolicy: "Policy1",
 	}
-	container := &LogicalContainer{
+	container1 := &LogicalContainer{
 		MainContainer: &Container{
 			Container: &lib.Container{
-				Name:  "container",
+				Name:  "container_1",
 				Bytes: 16384,
 				Count: 200,
 			},
@@ -76,7 +77,7 @@ func NewMockedTestSet() *MockedTestSet {
 		},
 		SegmentContainer: &Container{
 			Container: &lib.Container{
-				Name:  "container_segments",
+				Name:  "container_1_segments",
 				Bytes: 32768,
 				Count: 500,
 			},
@@ -88,15 +89,45 @@ func NewMockedTestSet() *MockedTestSet {
 			},
 		},
 	}
+	container2 := &LogicalContainer{
+		MainContainer: &Container{
+			Container: &lib.Container{
+				Name:  "container_2",
+				Bytes: 16384,
+				Count: 200,
+			},
+			Headers: lib.Headers{
+				StoragePolicyHeader:        "Policy2",
+				ContainerBytesUsedHeader:   "16384",
+				ContainerObjectCountHeader: "200",
+				TimestampHeader:            "1446048898.88226",
+			},
+		},
+		SegmentContainer: &Container{
+			Container: &lib.Container{
+				Name:  "container_2_segments",
+				Bytes: 32768,
+				Count: 500,
+			},
+			Headers: lib.Headers{
+				StoragePolicyHeader:        "Policy2",
+				ContainerBytesUsedHeader:   "32768",
+				ContainerObjectCountHeader: "500",
+				TimestampHeader:            "1446048897.88226",
+			},
+		},
+	}
 	containerList := ContainerList{
-		"container":          container.MainContainer,
-		"container_segments": container.SegmentContainer,
+		"container_1":          container1.MainContainer,
+		"container_1_segments": container1.SegmentContainer,
+		"container_2":          container2.MainContainer,
+		"container_2_segments": container2.SegmentContainer,
 	}
 
 	return &MockedTestSet{
 		Account:       account,
 		Connection:    connection,
-		Container:     container,
+		Container:     container1,
 		ContainerList: containerList,
 	}
 }
@@ -128,11 +159,20 @@ func (ts *MockedTestSet) MockAccount(status StatusMap) {
 	// Container list
 	httpmock.RegisterResponder("GET", MockedStorageURL,
 		func(req *http.Request) (resp *http.Response, err error) {
-			body, err := json.Marshal(ts.ContainerList.Slice())
-			if err != nil {
-				return
+			body := new(bytes.Buffer)
+
+			if req.URL.Query().Get("format") == "json" {
+				bb, err := json.Marshal(ts.ContainerList.Slice())
+				if err != nil {
+					return nil, err
+				}
+				body.Write(bb)
+			} else {
+				for _, c := range ts.ContainerList {
+					body.WriteString(c.Name + "\n")
+				}
 			}
-			resp = httpmock.NewBytesResponse(status["GET"], body)
+			resp = httpmock.NewBytesResponse(status["GET"], body.Bytes())
 			return
 		},
 	)

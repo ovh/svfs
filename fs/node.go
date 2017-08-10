@@ -22,7 +22,10 @@ type XAttr struct {
 	Value string
 }
 
+type Inode uint64
+
 type Node interface {
+	Name(c ctx.Context) string
 	GetAttr(c ctx.Context) (*Attr, error)
 	GetXAttr(c ctx.Context, attrName string) (*XAttr, error)
 	ListXAttr(c ctx.Context) ([]*XAttr, error)

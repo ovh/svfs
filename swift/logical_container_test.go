@@ -49,7 +49,7 @@ func (suite *LogicalContainerTestSuite) TestNewLogicalContainerSuccess() {
 	suite.ts.MockContainers(StatusMap{"HEAD": 200})
 	suite.ts.MockAccount(StatusMap{"PUT": 201})
 
-	container, err := NewLogicalContainer(suite.ts.Connection, "container")
+	container, err := NewLogicalContainer(suite.ts.Connection, suite.ts.Container.Name())
 
 	assert.NoError(suite.T(), err)
 	assert.EqualValues(suite.T(), suite.ts.Container, container)
@@ -59,7 +59,7 @@ func (suite *LogicalContainerTestSuite) TestNewLogicalContainerFail() {
 	suite.ts.MockContainers(StatusMap{"HEAD": 200})
 	suite.ts.MockAccount(StatusMap{"PUT": 500})
 
-	_, err := NewLogicalContainer(suite.ts.Connection, "container")
+	_, err := NewLogicalContainer(suite.ts.Connection, suite.ts.Container.Name())
 
 	assert.Error(suite.T(), err)
 }

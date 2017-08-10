@@ -35,7 +35,27 @@ func (d *Directory) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node,
 	return &Directory{dir}, err
 }
 
+func (d *Directory) ReadDirAll(ctx context.Context) (dirents []fuse.Dirent, err error) {
+	nodes, err := d.Directory.ReadDir(ctx)
+	if err != nil {
+		return
+	}
+
+	for _, node := range nodes {
+		switch node.(type) {
+		case sfs.Directory:
+			dirents = append(dirents, fuse.Dirent{
+				Name: node.Name(ctx),
+				Type: fuse.DT_Dir,
+			})
+		}
+	}
+
+	return
+}
+
 var (
+	_ fs.HandleReadDirAller = (*Directory)(nil)
 	_ fs.NodeStringLookuper = (*Directory)(nil)
 	_ fs.NodeMkdirer        = (*Directory)(nil)
 	_ fs.Node               = (*Directory)(nil)
