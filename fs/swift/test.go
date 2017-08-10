@@ -4,10 +4,10 @@ import "github.com/ovh/svfs/swift"
 
 func NewMockedFs() *Fs {
 	fs := new(Fs)
-	fs.conf = &FsConfiguration{
+	fs.conf = &Configuration{
 		BlockSize:     uint64(4096),
 		Container:     "container_1",
-		Connections:   uint32(1),
+		MaxConn:       uint32(1),
 		StoragePolicy: "Policy1",
 		Uid:           845,
 		Gid:           820,

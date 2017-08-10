@@ -15,5 +15,15 @@ install: true
 
 script:
   - go install
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then go test -v -covermode=count -coverprofile=profile.cov github.com/ovh/svfs/svfs; fi'
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then $HOME/gopath/bin/goveralls -coverprofile=profile.cov -service=svfs; fi'
+  - |
+    if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then
+      for pkg in $(go list github.com/ovh/svfs/... | grep -v vendor); do
+        go test -v -covermode=count -coverprofile=cover.$(date +%s) $pkg;
+      done;
+
+      echo "mode: set" > profile.cov;
+      cat cover.* | grep -v "mode:" | sort -r | awk '{if($1 != last) {print $0;last=$1}}' >> profile.cov;
+      rm -f cover.*;
+    fi
+  - if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then
+      $HOME/gopath/bin/goveralls -coverprofile=profile.cov -service=svfs; fi'

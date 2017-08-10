@@ -9,3 +9,7 @@ func (i Inode) ToBytes() []byte {
 	binary.BigEndian.PutUint64(buf, uint64(i))
 	return buf
 }
+
+func (i Inode) ID() uint64 {
+	return uint64(i)
+}

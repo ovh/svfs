@@ -4,10 +4,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/ovh/svfs/fs/inode"
 	ctx "golang.org/x/net/context"
 )
 
 type Attr struct {
+	Inode inode.Inode
 	Atime time.Time
 	Ctime time.Time
 	Mtime time.Time
@@ -27,9 +29,9 @@ type Inode uint64
 type Node interface {
 	Name(c ctx.Context) string
 	GetAttr(c ctx.Context) (*Attr, error)
-	GetXAttr(c ctx.Context, attrName string) (*XAttr, error)
-	ListXAttr(c ctx.Context) ([]*XAttr, error)
-	RemoveXAttr(c ctx.Context, attrName string) error
-	SetAttr(c ctx.Context, attr *Attr) error
-	SetXAttr(c ctx.Context, xattr *XAttr) error
+	//GetXAttr(c ctx.Context, attrName string) (*XAttr, error)
+	//ListXAttr(c ctx.Context) ([]*XAttr, error)
+	//RemoveXAttr(c ctx.Context, attrName string) error
+	//SetAttr(c ctx.Context, attr *Attr) error
+	//SetXAttr(c ctx.Context, xattr *XAttr) error
 }

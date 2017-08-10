@@ -32,6 +32,8 @@ type FsConfiguration struct {
 	OsTenantName      string
 	HubicAuthToken    string
 	HubicRefreshToken string
+	StoragePath       string
+	StorageType       string
 }
 
 type Fs struct {
