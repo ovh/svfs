@@ -15,6 +15,10 @@ type Account struct {
 	swiftAccount *swift.Account
 }
 
+func NewAccount(fs *Fs, account *swift.Account) *Account {
+	return &Account{Fs: fs, swiftAccount: account}
+}
+
 func (a *Account) Create(c ctx.Context, nodeName string) (file fs.File, err error) {
 	return nil, syscall.ENOTSUP
 }
@@ -38,12 +42,15 @@ func (a *Account) Hardlink(c ctx.Context, targetPath string, linkName string) er
 }
 
 func (a *Account) Mkdir(c ctx.Context, dirName string) (fs.Directory, error) {
-	con := a.storage.Borrow().(*swift.Connection)
-	defer a.storage.Return()
+	con := a.pool.Borrow().(*swift.Connection)
+	defer a.pool.Return()
 
 	container, err := swift.NewLogicalContainer(con, dirName)
+	if err != nil {
+		return nil, err
+	}
 
-	return &Container{Fs: a.Fs, swiftContainer: container}, err
+	return NewContainer(a.Fs, container), nil
 }
 
 func (a *Account) Name(c ctx.Context) string {
@@ -51,8 +58,8 @@ func (a *Account) Name(c ctx.Context) string {
 }
 
 func (a *Account) ReadDir(c ctx.Context) (nodes []fs.Node, err error) {
-	con := a.storage.Borrow().(*swift.Connection)
-	defer a.storage.Return()
+	con := a.pool.Borrow().(*swift.Connection)
+	defer a.pool.Return()
 
 	containers, err := con.LogicalContainersAll()
 	if err != nil {
@@ -60,7 +67,7 @@ func (a *Account) ReadDir(c ctx.Context) (nodes []fs.Node, err error) {
 	}
 
 	for _, container := range containers {
-		nodes = append(nodes, &Container{Fs: a.Fs, swiftContainer: container})
+		nodes = append(nodes, NewContainer(a.Fs, container))
 	}
 
 	return
@@ -71,8 +78,8 @@ func (a *Account) Remove(c ctx.Context, node fs.Node) (err error) {
 		return syscall.ENOTSUP
 	}
 
-	con := a.storage.Borrow().(*swift.Connection)
-	defer a.storage.Return()
+	con := a.pool.Borrow().(*swift.Connection)
+	defer a.pool.Return()
 
 	return con.DeleteLogicalContainer(node.(*Container).swiftContainer)
 }

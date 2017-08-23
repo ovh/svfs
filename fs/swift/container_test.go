@@ -30,7 +30,11 @@ func (suite *ContainerTestSuite) SetupTest() {
 	suite.ts = swift.NewMockedTestSet()
 	suite.fs = NewMockedFs()
 	suite.c = ctx.Background()
-	suite.containerNode = &Container{suite.fs, suite.ts.Container}
+	suite.containerNode = NewContainer(suite.fs, suite.ts.Container)
+}
+
+func (suite *ContainerTestSuite) TearDownTest() {
+	suite.fs.Shutdown()
 }
 
 func (suite *ContainerTestSuite) TearDownSuite() {

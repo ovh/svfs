@@ -6,10 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ovh/svfs/fs/store"
+	"github.com/ovh/svfs/store"
 	"github.com/ovh/svfs/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	_ "github.com/ovh/svfs/store/drivers"
 )
 
 type BoltTestSuite struct {
@@ -20,7 +22,8 @@ type BoltTestSuite struct {
 func (suite *BoltTestSuite) SetupTest() {
 	storeName := fmt.Sprintf("%d", time.Now().UnixNano())
 	storePath := os.TempDir() + "/" + storeName
-	suite.store, _ = NewBoltStore(storePath)
+	suite.store = &Bolt{}
+	suite.store.Init(storePath)
 }
 
 func (suite *BoltTestSuite) TearDownTest() {

@@ -5,6 +5,7 @@ type Store interface {
 	Close() error
 	Delete(namespace string, k []byte) error
 	Get(namespace string, k []byte) ([]byte, error)
+	Init(path string) error
 	Path() string
 	Prepare(namespace string) error
 	Save(namespace string, k, v []byte) error

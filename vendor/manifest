@@ -157,6 +157,14 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/serenize/snaker",
+			"repository": "https://github.com/serenize/snaker",
+			"vcs": "git",
+			"revision": "1c7f65329f6524115af8ca01ab604c00cddf5558",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/shurcooL/sanitized_anchor_name",
 			"repository": "https://github.com/shurcooL/sanitized_anchor_name",
 			"vcs": "git",

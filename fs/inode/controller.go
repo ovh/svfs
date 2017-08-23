@@ -1,10 +1,18 @@
 package inode
 
-import "github.com/ovh/svfs/fs/store"
+import "github.com/ovh/svfs/store"
 
 type Controller struct {
 	namespace string
 	store     store.Store
+}
+
+func NewController(namespace string, store store.Store) (c *Controller, err error) {
+	err = store.Prepare(namespace)
+	if err != nil {
+		return
+	}
+	return &Controller{namespace: namespace, store: store}, nil
 }
 
 func (ctl *Controller) Allocate() (i Inode, err error) {

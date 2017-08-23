@@ -2,13 +2,19 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"bazil.org/fuse"
 	fusefs "bazil.org/fuse/fs"
+	"github.com/ovh/svfs/driver"
 	swiftfs "github.com/ovh/svfs/fs/swift"
 	swiftfuse "github.com/ovh/svfs/fuse"
 	"github.com/ovh/svfs/signal"
+	"github.com/ovh/svfs/store"
 	ctx "golang.org/x/net/context"
+
+	_ "github.com/ovh/svfs/store/drivers"
+	_ "github.com/ovh/svfs/store/drivers/register"
 )
 
 func init() {
@@ -25,25 +31,39 @@ func cleanup(mountpoint interface{}) {
 func main() {
 	mountpoint := "/tmp/svfs"
 
-	fs := &swiftfuse.SVFS{Fs: &swiftfs.Fs{}}
+	// Initialize store
+	store := driver.GetGroup("store").Get("Bolt").(store.Store)
+	store.Init("/dev/shm/svfs.store")
+
+	fs, err := swiftfuse.NewSVFS(store)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	context := ctx.Background()
 
+	// Filesystem configuration
+	// Hardcoded version here, for a first draft
 	opts := &swiftfs.FsConfiguration{
 		BlockSize:     4096,
-		Connections:   30,
+		MaxConn:       30,
 		Perms:         0700,
-		Gid:           3882,
-		Uid:           3882,
-		OsAuthURL:     "https://auth.cloud.ovh.net/v2.0",
+		Gid:           1000,
+		Uid:           1000,
+		OsAuthURL:     "https://auth.provider/version",
 		OsUserName:    "user",
-		OsPassword:    "passwd",
+		OsPassword:    "pass",
 		OsTenantName:  "tenant",
 		OsRegionName:  "region",
-		StoragePolicy: "PCS",
+		StoragePolicy: "Policy",
+		StorePath:     "/dev/shm/svfs.db",
+		StoreDriver:   "bolt",
 	}
 
-	fs.Setup(context, opts)
+	err = fs.Setup(context, opts)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Mount the FUSE fs
 	c, err := fuse.Mount(mountpoint, fuse.Subtype("svfs"))
@@ -53,12 +73,12 @@ func main() {
 	signal.Trap(cleanup, mountpoint)
 
 	// Serve FUSE requests
-	srv.Serve(fs)
+	err = srv.Serve(fs)
 
 	// Teardown
 	<-c.Ready
 
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 }

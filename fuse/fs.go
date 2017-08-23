@@ -6,10 +6,23 @@ import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	sfs "github.com/ovh/svfs/fs"
+	"github.com/ovh/svfs/fs/inode"
+	"github.com/ovh/svfs/fs/swift"
+	"github.com/ovh/svfs/store"
 )
+
+var inodes *inode.Controller
 
 type SVFS struct {
 	sfs.Fs
+}
+
+func NewSVFS(s store.Store) (fs *SVFS, err error) {
+	inodes, err = inode.NewController("inodes", s)
+	if err != nil {
+		return
+	}
+	return &SVFS{Fs: &swift.Fs{}}, nil
 }
 
 func (svfs *SVFS) Root() (fs.Node, error) {

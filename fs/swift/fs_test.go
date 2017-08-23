@@ -37,6 +37,10 @@ func (suite *FsTestSuite) SetupTest() {
 	suite.fs = NewMockedFs()
 }
 
+func (suite *FsTestSuite) TearDownTest() {
+	suite.fs.Shutdown()
+}
+
 func (suite *FsTestSuite) TestRootAccountSuccess() {
 	suite.ts.MockAccount(swift.StatusMap{"HEAD": 200})
 
@@ -98,12 +102,6 @@ func (suite *FsTestSuite) TestRootContainerFail() {
 	suite.fs.conf.Container = suite.ts.Container.Name()
 	_, err := suite.fs.Root()
 
-	assert.Error(suite.T(), err)
-}
-
-func (suite *FsTestSuite) TestSetupFail() {
-	fs := new(Fs)
-	err := fs.Setup(suite.c, suite.fs.conf)
 	assert.Error(suite.T(), err)
 }
 

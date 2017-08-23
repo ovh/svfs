@@ -2,20 +2,21 @@ package bolt
 
 import (
 	"github.com/boltdb/bolt"
+	"github.com/ovh/svfs/driver"
 	"github.com/ovh/svfs/util"
 )
+
+func init() {
+	driver.GetGroup("store").Register((*Bolt)(nil))
+}
 
 type Bolt struct {
 	db *bolt.DB
 }
 
-func NewBoltStore(path string) (b *Bolt, err error) {
-	db, err := bolt.Open(path, 0600, nil)
-	if err != nil {
-		return
-	}
-
-	return &Bolt{db: db}, nil
+func (b *Bolt) Init(path string) (err error) {
+	b.db, err = bolt.Open(path, 0600, nil)
+	return err
 }
 
 func (b *Bolt) Append(namespace string, v []byte) (id uint64, err error) {

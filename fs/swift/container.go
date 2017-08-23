@@ -15,6 +15,10 @@ type Container struct {
 	swiftContainer *swift.LogicalContainer
 }
 
+func NewContainer(fs *Fs, container *swift.LogicalContainer) (c *Container) {
+	return &Container{Fs: fs, swiftContainer: container}
+}
+
 func (co *Container) Create(c ctx.Context, nodeName string) (fs.File, error) {
 	panic("not implemented")
 }

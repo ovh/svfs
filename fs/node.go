@@ -4,12 +4,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/ovh/svfs/fs/inode"
 	ctx "golang.org/x/net/context"
 )
 
 type Attr struct {
-	Inode inode.Inode
 	Atime time.Time
 	Ctime time.Time
 	Mtime time.Time

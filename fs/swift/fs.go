@@ -13,33 +13,44 @@ import (
 )
 
 type FsConfiguration struct {
-	BlockSize         uint64
-	Perms             os.FileMode
-	Gid               uint32
-	Uid               uint32
-	Size              uint64
-	StoragePolicy     string
-	Container         string
-	Attributes        bool
-	XAttributes       bool
-	Connections       uint32
-	OsAuthToken       string
-	OsAuthURL         string
-	OsUserName        string
-	OsPassword        string
-	OsStorageURL      string
-	OsRegionName      string
-	OsTenantName      string
+	// Base settings
+	BlockSize uint64
+	Perms     os.FileMode
+	Gid       uint32
+	Uid       uint32
+	Size      uint64
+
+	// Swift settings
+	Container     string
+	StoragePolicy string
+	Attributes    bool
+	XAttributes   bool
+
+	// Network settings
+	MaxConn uint32
+
+	// Openstack settings
+	OsAuthToken  string
+	OsAuthURL    string
+	OsUserName   string
+	OsPassword   string
+	OsStorageURL string
+	OsRegionName string
+	OsTenantName string
+
+	// Hubic settings
 	HubicAuthToken    string
 	HubicRefreshToken string
-	StoragePath       string
-	StorageType       string
+
+	// Store settings
+	StorePath   string
+	StoreDriver string
 }
 
 type Fs struct {
 	conf      *FsConfiguration
 	mountTime time.Time
-	storage   *swift.ResourceHolder
+	pool      *swift.ResourceHolder
 }
 
 func (sfs *Fs) Setup(c ctx.Context, conf interface{}) (err error) {
@@ -56,10 +67,14 @@ func (sfs *Fs) Setup(c ctx.Context, conf interface{}) (err error) {
 		AuthToken:  sfs.conf.OsAuthToken,
 	}
 
-	sfs.storage = swift.NewResourceHolder(
-		sfs.conf.Connections,
+	sfs.pool = swift.NewResourceHolder(
+		sfs.conf.MaxConn,
 		&swift.Connection{con, sfs.conf.StoragePolicy},
 	)
+
+	if con.Authenticated() {
+		return
+	}
 
 	return con.Authenticate()
 }
@@ -70,13 +85,17 @@ func (sfs *Fs) Root() (dir fs.Directory, err error) {
 		return
 	}
 	if container == nil {
-		dir = &Account{Fs: sfs, swiftAccount: account}
+		dir = NewAccount(sfs, account)
 	}
 	if container != nil {
-		dir = &Container{Fs: sfs, swiftContainer: container}
+		dir = NewContainer(sfs, container)
 	}
 
 	return
+}
+
+func (sfs *Fs) Shutdown() error {
+	return nil
 }
 
 func (sfs *Fs) StatFs(c ctx.Context) (stats *fs.FsStats, err error) {
@@ -96,8 +115,8 @@ func (sfs *Fs) StatFs(c ctx.Context) (stats *fs.FsStats, err error) {
 }
 
 func (sfs *Fs) getFsRoot() (account *swift.Account, container *swift.LogicalContainer, err error) {
-	con := sfs.storage.Borrow().(*swift.Connection)
-	defer sfs.storage.Return()
+	con := sfs.pool.Borrow().(*swift.Connection)
+	defer sfs.pool.Return()
 
 	account, err = con.Account()
 	if err != nil {

@@ -17,4 +17,5 @@ type Fs interface {
 	Setup(c ctx.Context, conf interface{}) error
 	StatFs(c ctx.Context) (*FsStats, error)
 	Root() (Directory, error)
+	Shutdown() error
 }

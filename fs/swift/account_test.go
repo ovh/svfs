@@ -31,7 +31,11 @@ func (suite *AccountTestSuite) SetupTest() {
 	suite.c = context.Background()
 	suite.ts = swift.NewMockedTestSet()
 	suite.fs = NewMockedFs()
-	suite.accountNode = &Account{suite.fs, suite.ts.Account}
+	suite.accountNode = NewAccount(suite.fs, suite.ts.Account)
+}
+
+func (suite *AccountTestSuite) TearDownTest() {
+	suite.fs.Shutdown()
 }
 
 func (suite *AccountTestSuite) TearDownSuite() {
@@ -81,7 +85,7 @@ func (suite *AccountTestSuite) TestMkdirFail() {
 
 func (suite *AccountTestSuite) TestRemoveSuccess() {
 	suite.ts.MockContainers(swift.StatusMap{"DELETE": 200})
-	containerNode := &Container{Fs: suite.fs, swiftContainer: suite.ts.Container}
+	containerNode := NewContainer(suite.fs, suite.ts.Container)
 
 	err := suite.accountNode.Remove(suite.c, containerNode)
 
@@ -90,7 +94,7 @@ func (suite *AccountTestSuite) TestRemoveSuccess() {
 
 func (suite *AccountTestSuite) TestRemoveFailOnContainer() {
 	suite.ts.MockContainers(swift.StatusMap{"DELETE": 500})
-	containerNode := &Container{Fs: suite.fs, swiftContainer: suite.ts.Container}
+	containerNode := NewContainer(suite.fs, suite.ts.Container)
 
 	err := suite.accountNode.Remove(suite.c, containerNode)
 
@@ -99,7 +103,7 @@ func (suite *AccountTestSuite) TestRemoveFailOnContainer() {
 
 func (suite *AccountTestSuite) TestRemoveFailOnNode() {
 	suite.ts.MockContainers(swift.StatusMap{"DELETE": 500})
-	accountNode := &Account{Fs: suite.fs, swiftAccount: suite.ts.Account}
+	accountNode := NewAccount(suite.fs, suite.ts.Account)
 
 	err := suite.accountNode.Remove(suite.c, accountNode)
 
