@@ -14,6 +14,7 @@ func LoadConfig() error {
 	v.BindEnv("os_username")
 	v.BindEnv("os_password")
 	v.BindEnv("os_region_name")
+	v.BindEnv("os_domain")
 	v.BindEnv("os_storage_url")
 	v.BindEnv("hubic_auth")
 	v.BindEnv("hubic_token")
