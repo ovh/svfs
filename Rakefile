@@ -40,7 +40,7 @@ task :release, [:version] => [:prepare_release] do |t, args|
   File.open("svfs/version.go", "w") { |file| file << new_source }
 
   # Push on master and wait for build to complete
-  g = Git.open("#{ENV['GOPATH']}/src/github.com/ovh/svfs", :log => Logger.new(STDOUT))
+  g = Git.open("#{ENV['GOPATH']}/src/github.com/vpalmisano/svfs", :log => Logger.new(STDOUT))
   g.checkout(:master)
   g.add(['docs/RELEASE.md', 'svfs/version.go'])
   g.commit(["Release #{args.version}",

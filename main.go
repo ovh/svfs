@@ -2,7 +2,7 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/ovh/svfs/cmd"
+	"github.com/vpalmisano/svfs/cmd"
 )
 
 func main() {

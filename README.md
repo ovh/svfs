@@ -1,11 +1,11 @@
 # The Swift Virtual File System
 
-[![Release](https://badge.fury.io/gh/ovh%2Fsvfs.svg)](https://github.com/ovh/svfs/releases)
-[![Github All Releases](https://img.shields.io/github/downloads/ovh/svfs/total.svg)](https://github.com/ovh/svfs/releases)
+[![Release](https://badge.fury.io/gh/ovh%2Fsvfs.svg)](https://github.com/vpalmisano/svfs/releases)
+[![Github All Releases](https://img.shields.io/github/downloads/ovh/svfs/total.svg)](https://github.com/vpalmisano/svfs/releases)
 [![Build Status](https://travis-ci.org/ovh/svfs.svg?branch=master)](https://travis-ci.org/ovh/svfs)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ovh/svfs)](https://goreportcard.com/report/github.com/ovh/svfs)
+[![Go Report Card](https://goreportcard.com/badge/github.com/vpalmisano/svfs)](https://goreportcard.com/report/github.com/vpalmisano/svfs)
 [![Coverage Status](https://coveralls.io/repos/github/ovh/svfs/badge.svg?branch=master)](https://coveralls.io/github/ovh/svfs?branch=master)
-[![GoDoc](https://godoc.org/github.com/ovh/svfs/svfs?status.svg)](https://godoc.org/github.com/ovh/svfs/svfs)
+[![GoDoc](https://godoc.org/github.com/vpalmisano/svfs/svfs?status.svg)](https://godoc.org/github.com/vpalmisano/svfs/svfs)
 
 **SVFS** is a Virtual File System over Openstack Swift built upon fuse. It is compatible with [hubiC](https://hubic.com),
 [OVH Public Cloud Storage](https://www.ovh.com/fr/cloud/storage/object-storage) and basically every endpoint using a standard
@@ -17,7 +17,7 @@ This is not an official project of the Openstack community.
 
 ## Installation
 
-Download and install the latest [release](https://github.com/ovh/svfs/releases) packaged for your distribution.
+Download and install the latest [release](https://github.com/vpalmisano/svfs/releases) packaged for your distribution.
 
 ## Usage
 

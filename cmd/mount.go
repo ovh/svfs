@@ -14,10 +14,10 @@ import (
 	fusefs "bazil.org/fuse/fs"
 	"github.com/Sirupsen/logrus"
 	"github.com/fatih/color"
-	"github.com/ovh/svfs/config"
-	"github.com/ovh/svfs/svfs"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/vpalmisano/svfs/config"
+	"github.com/vpalmisano/svfs/svfs"
 	"github.com/xlucas/swift"
 )
 
