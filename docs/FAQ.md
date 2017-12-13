@@ -12,7 +12,7 @@ get the actual operation progress with your favorite tools and you don't
 need any extra local space.
 * An SVFS file is always a stream on the network. So you can play media content
 directly as a stream, seek to a specific part in the file and so on. These
-features also work whith encrypted content.
+features also work with encrypted content.
 
 This is not the role of a network filesystem to chose how your data should be
 accessed : it should be consistent across operations. If you are looking for
