@@ -109,10 +109,11 @@ type v3AuthResponse struct {
 type v3Auth struct {
 	Auth    *v3AuthResponse
 	Headers http.Header
+	Region      string
 }
 
 func (auth *v3Auth) Request(c *Connection) (*http.Request, error) {
-
+    auth.Region = c.Region
 	var v3i interface{}
 
 	v3 := v3AuthRequest{}
@@ -197,15 +198,17 @@ func (auth *v3Auth) endpointUrl(Type string, Internal bool) string {
 	for _, catalog := range auth.Auth.Token.Catalog {
 		if catalog.Type == Type {
 			for _, endpoint := range catalog.Endpoints {
-				if Internal {
-					if endpoint.Interface == v3InterfaceInternal {
-						return endpoint.Url
-					}
-				} else {
-					if endpoint.Interface == v3InterfacePublic {
-						return endpoint.Url
-					}
-				}
+				if auth.Region == "" || (auth.Region == endpoint.Region) {
+                    if Internal {
+                        if endpoint.Interface == v3InterfaceInternal {
+                            return endpoint.Url
+                        }
+                    } else {
+                        if endpoint.Interface == v3InterfacePublic {
+                            return endpoint.Url
+                        }
+                    }
+            	}
 			}
 		}
 	}
