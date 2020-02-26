@@ -288,10 +288,10 @@ func useConfiguration() {
 
 	svfs.SwiftConnection.AuthToken = viper.GetString("os_auth_token")
 	svfs.SwiftConnection.StorageUrl = viper.GetString("os_storage_url")
-
 	svfs.SwiftConnection.AuthUrl = viper.GetString("os_auth_url")
 	svfs.SwiftConnection.Tenant = viper.GetString("os_tenant_name")
 	svfs.SwiftConnection.UserName = viper.GetString("os_username")
 	svfs.SwiftConnection.ApiKey = viper.GetString("os_password")
 	svfs.SwiftConnection.Region = viper.GetString("os_region_name")
+	svfs.SwiftConnection.DomainId = viper.GetString("os_user_domain_name")
 }
