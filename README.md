@@ -1,3 +1,5 @@
+# *** This project is not maintained anymore ***
+
 # The Swift Virtual File System
 
 [![Release](https://badge.fury.io/gh/ovh%2Fsvfs.svg)](https://github.com/ovh/svfs/releases)
