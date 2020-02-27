@@ -10,10 +10,9 @@ You can either download your credentials from :
 
 Log into the OVH Manager using your credentials.
 Then select the *cloud* section, click on your cloud project
-then go to the *billing* section. From there, select
-the *Openstack* tab, and click on the key icon at the right
-of the user you want to extract credentials for. Then
-choose to download the *openrc* file. Source it and
+then go to the *Users & Roles* section. From there click on the
+three dots at the right of the user you want to extract credentials for.
+Then choose to download the *openrc* file. Source it and
 enter your password when prompted.
 
 ### OVH API
