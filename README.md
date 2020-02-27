@@ -1,3 +1,5 @@
+# Checkout the release that supports API Keystone V3 [here](https://github.com/GoldenBees/svfs/releases)
+
 # The Swift Virtual File System
 
 [![Release](https://badge.fury.io/gh/ovh%2Fsvfs.svg)](https://github.com/ovh/svfs/releases)
