@@ -14,10 +14,10 @@ import (
 	fusefs "bazil.org/fuse/fs"
 	"github.com/Sirupsen/logrus"
 	"github.com/fatih/color"
-	"github.com/ovh/svfs/config"
-	"github.com/ovh/svfs/svfs"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/vpalmisano/svfs/config"
+	"github.com/vpalmisano/svfs/svfs"
 	"github.com/xlucas/swift"
 )
 
@@ -160,6 +160,7 @@ func setFlags() {
 	flags.StringVar(&svfs.SwiftConnection.UserName, "os-username", "", "Username")
 	flags.StringVar(&svfs.SwiftConnection.ApiKey, "os-password", "", "User password")
 	flags.StringVar(&svfs.SwiftConnection.Region, "os-region-name", "", "Region name")
+	flags.StringVar(&svfs.SwiftConnection.Domain, "os-domain", "", "Domain")
 	flags.StringVar(&svfs.SwiftConnection.StorageUrl, "os-storage-url", "", "Storage URL")
 	flags.BoolVar(&svfs.SwiftConnection.Internal, "os-internal-endpoint", false, "Use internal storage URL")
 	flags.StringVar(&svfs.SwiftConnection.Tenant, "os-tenant-name", "", "Tenant name")
@@ -216,6 +217,7 @@ func setFlags() {
 	viper.BindPFlag("os_password", mountCmd.PersistentFlags().Lookup("os-password"))
 	viper.BindPFlag("os_tenant_name", mountCmd.PersistentFlags().Lookup("os-tenant-name"))
 	viper.BindPFlag("os_region_name", mountCmd.PersistentFlags().Lookup("os-region-name"))
+	viper.BindPFlag("os_domain", mountCmd.PersistentFlags().Lookup("os-domain"))
 	viper.BindPFlag("os_auth_token", mountCmd.PersistentFlags().Lookup("os-auth-token"))
 	viper.BindPFlag("os_storage_url", mountCmd.PersistentFlags().Lookup("os-storage-url"))
 	viper.BindPFlag("hubic_auth", mountCmd.PersistentFlags().Lookup("hubic-authorization"))
@@ -294,4 +296,5 @@ func useConfiguration() {
 	svfs.SwiftConnection.UserName = viper.GetString("os_username")
 	svfs.SwiftConnection.ApiKey = viper.GetString("os_password")
 	svfs.SwiftConnection.Region = viper.GetString("os_region_name")
+	svfs.SwiftConnection.Domain = viper.GetString("os_domain")
 }

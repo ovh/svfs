@@ -15,5 +15,5 @@ install: true
 
 script:
   - go install
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then go test -v -covermode=count -coverprofile=profile.cov github.com/ovh/svfs/svfs; fi'
+  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then go test -v -covermode=count -coverprofile=profile.cov github.com/vpalmisano/svfs/svfs; fi'
   - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then $HOME/gopath/bin/goveralls -coverprofile=profile.cov -service=svfs; fi'

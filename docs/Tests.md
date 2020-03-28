@@ -38,7 +38,7 @@ SVFS_TEST_STORAGE_URL
 
 #### Execution
 
-Run `go test -v github.com/ovh/svfs/svfs`.
+Run `go test -v github.com/vpalmisano/svfs/svfs`.
 
 
 ## Integration tests

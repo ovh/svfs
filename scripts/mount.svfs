@@ -39,6 +39,7 @@ OPTIONS = {
     'readdir'           => '--readdir-concurrency',
     'readahead_size'    => '--readahead-size',
     'region'            => '--os-region-name',
+    'domain'            => '--os-domain',
     'request_timeout'   => '--os-request-timeout',
     'ro'                => '--read-only',
     'segment_size'      => '--os-segment-size',
