@@ -33,6 +33,7 @@ OPTIONS = {
     'ip'                => '--client-ip',
     'mode'              => '--default-mode',
     'password'          => '--os-password',
+    'user_domain_name'  => '--os-user-domain-name',
     'profile_addr'      => '--profile-bind',
     'profile_cpu'       => '--profile-cpu',
     'profile_ram'       => '--profile-ram',
