@@ -59,6 +59,7 @@ SVFS supports reading the following set of environment variables :
  OS_PASSWORD
  OS_REGION_NAME
  OS_TENANT_NAME
+ OS_USER_DOMAIN_NAME
 ```
 * If you already authenticated to an identity endpoint :
 ```
@@ -85,10 +86,11 @@ hubic_token: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX...
 
 #### Keystone options
 
-* `auth_url`: keystone URL (default is https://auth.cloud.ovh.net/v2.0).
+* `auth_url`: keystone URL (default is https://auth.cloud.ovh.net/v2.0), should be set to `https://auth.cloud.ovh.net/v3/`
 * `username`: your keystone user name.
 * `password`: your keystone password.
 * `tenant`: your project name.
+* `user_domain_name`: should be set to `default` (v3.0)
 * `region`: the region where your tenant is.
 * `version`: authentication version (`0` means auto-discovery which is the default).
 * `storage_url`: the storage endpoint holding your data.
