@@ -154,12 +154,12 @@ func setFlags() {
 	flags := mountCmd.PersistentFlags()
 
 	//Swift options
-	flags.StringVar(&svfs.SwiftConnection.AuthUrl, "os-auth-url", "https://auth.cloud.ovh.net/v2.0", "Authentification URL")
+	flags.StringVar(&svfs.SwiftConnection.AuthUrl, "os-auth-url", "https://auth.cloud.ovh.net/v3/", "Authentification URL")
 	flags.StringVar(&svfs.TargetContainer, "os-container-name", "", "Container name")
 	flags.StringVar(&svfs.SwiftConnection.AuthToken, "os-auth-token", "", "Authentification token")
 	flags.StringVar(&svfs.SwiftConnection.UserName, "os-username", "", "Username")
 	flags.StringVar(&svfs.SwiftConnection.ApiKey, "os-password", "", "User password")
-	flags.StringVar(&svfs.SwiftConnection.DomainId, "os-user-domain-name", "", "User domain name")
+	flags.StringVar(&svfs.SwiftConnection.DomainId, "os-user-domain-name", "default", "User domain name")
 	flags.StringVar(&svfs.SwiftConnection.Region, "os-region-name", "", "Region name")
 	flags.StringVar(&svfs.SwiftConnection.StorageUrl, "os-storage-url", "", "Storage URL")
 	flags.BoolVar(&svfs.SwiftConnection.Internal, "os-internal-endpoint", false, "Use internal storage URL")
